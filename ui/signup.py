@@ -1,58 +1,62 @@
-import tkinter as tk
-from tkinter import Entry, Label, Button, Frame
+import customtkinter as ctk
 
-# Main App Window
-root = tk.Tk()
+# ---------------- Main Application Window ----------------
+ctk.set_appearance_mode("light")  # Light Mode UI
+root = ctk.CTk()
 root.title("Sign Up Page")
 root.geometry("1000x600")
-root.configure(bg="#FF9C66")  # Background color to match the UI
+root.resizable(False, False)
 
-# Gradient Background Effect (Simulated)
-canvas = tk.Canvas(root, width=1000, height=600, bg="white", highlightthickness=0)
-canvas.place(x=0, y=0)
-canvas.create_rectangle(0, 0, 1000, 600, fill="#FF9C66", outline="")
-
-# --- Left Side: Signup Form ---
-form_frame = Frame(root, bg="white", width=350, height=400, bd=5, relief="flat")
-form_frame.place(x=120, y=100)
+# ---------------- Left Side: Sign-Up Form ----------------
+form_frame = ctk.CTkFrame(root, fg_color="white", width=350, height=450, corner_radius=20)
+form_frame.place(x=120, y=80)
 
 # Title
-Label(form_frame, text="Create Your Account", font=("Arial", 16, "bold"), bg="white").pack(pady=10)
+ctk.CTkLabel(form_frame, text="Create Your Account ✨", font=("Arial", 18, "bold"), text_color="black").pack(pady=10)
 
 # Full Name
-Label(form_frame, text="Full Name", font=("Arial", 10), bg="white").pack(anchor="w", padx=20)
-Entry(form_frame, font=("Arial", 12), width=30, relief="solid", bd=1).pack(pady=5, padx=20)
+ctk.CTkLabel(form_frame, text="Full Name", font=("Arial", 12), text_color="black").pack(anchor="w", padx=30)
+name_entry = ctk.CTkEntry(form_frame, font=("Arial", 12), width=250, height=35, corner_radius=10)
+name_entry.pack(pady=5)
 
 # Email
-Label(form_frame, text="Email", font=("Arial", 10), bg="white").pack(anchor="w", padx=20)
-Entry(form_frame, font=("Arial", 12), width=30, relief="solid", bd=1).pack(pady=5, padx=20)
+ctk.CTkLabel(form_frame, text="Email", font=("Arial", 12), text_color="black").pack(anchor="w", padx=30)
+email_entry = ctk.CTkEntry(form_frame, font=("Arial", 12), width=250, height=35, corner_radius=10)
+email_entry.pack(pady=5)
 
 # Phone Number
-Label(form_frame, text="Phone Number", font=("Arial", 10), bg="white").pack(anchor="w", padx=20)
-Entry(form_frame, font=("Arial", 12), width=30, relief="solid", bd=1).pack(pady=5, padx=20)
+ctk.CTkLabel(form_frame, text="Phone Number", font=("Arial", 12), text_color="black").pack(anchor="w", padx=30)
+phone_entry = ctk.CTkEntry(form_frame, font=("Arial", 12), width=250, height=35, corner_radius=10)
+phone_entry.pack(pady=5)
 
 # Password
-Label(form_frame, text="Password", font=("Arial", 10), bg="white").pack(anchor="w", padx=20)
-Entry(form_frame, font=("Arial", 12), width=30, relief="solid", bd=1, show="*").pack(pady=5, padx=20)
+ctk.CTkLabel(form_frame, text="Password", font=("Arial", 12), text_color="black").pack(anchor="w", padx=30)
+password_entry = ctk.CTkEntry(form_frame, font=("Arial", 12), width=250, height=35, corner_radius=10, show="*")
+password_entry.pack(pady=5)
 
 # Confirm Password
-Label(form_frame, text="Confirm Password", font=("Arial", 10), bg="white").pack(anchor="w", padx=20)
-Entry(form_frame, font=("Arial", 12), width=30, relief="solid", bd=1, show="*").pack(pady=5, padx=20)
+ctk.CTkLabel(form_frame, text="Confirm Password", font=("Arial", 12), text_color="black").pack(anchor="w", padx=30)
+confirm_entry = ctk.CTkEntry(form_frame, font=("Arial", 12), width=250, height=35, corner_radius=10, show="*")
+confirm_entry.pack(pady=5)
 
-# Sign Up Button
-signup_button = Button(form_frame, text="Sign Up", font=("Arial", 12, "bold"), bg="red", fg="white", width=25, height=2)
+# Sign Up Button with Hover Effect
+signup_button = ctk.CTkButton(form_frame, text="Sign Up", font=("Arial", 14, "bold"), fg_color="red",
+                              text_color="white", width=250, height=40, corner_radius=10,
+                              hover_color="#b71c1c")
 signup_button.pack(pady=15)
 
 # Footer Links
-footer_frame = Frame(form_frame, bg="white")
+footer_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
 footer_frame.pack()
-Label(footer_frame, text="Already have an account?", fg="black", bg="white", font=("Arial", 10)).pack(side=tk.LEFT, padx=10)
-Label(footer_frame, text="Login", fg="red", bg="white", font=("Arial", 10, "bold")).pack(side=tk.RIGHT, padx=10)
+ctk.CTkLabel(footer_frame, text="Already have an account?", text_color="black", font=("Arial", 11)).pack(side="left", padx=15)
+login_label = ctk.CTkLabel(footer_frame, text="Login", text_color="red", font=("Arial", 11, "bold"), cursor="hand2")
+login_label.pack(side="right", padx=15)
 
-# --- Right Side: Mobile UI Placeholder ---
-right_frame = Frame(root, bg="white", width=200, height=400, bd=5, relief="flat")
-right_frame.place(x=650, y=100)
+# ---------------- Right Side: Mobile UI Mockup ----------------
+right_frame = ctk.CTkFrame(root, fg_color="white", width=250, height=450, corner_radius=20)
+right_frame.place(x=600, y=80)
 
-Label(right_frame, text="[Mobile UI]", font=("Arial", 12, "bold"), bg="white", fg="black").pack(expand=True)
+ctk.CTkLabel(right_frame, text="📱 Mobile UI Preview", font=("Arial", 14, "bold"), text_color="black").pack(expand=True)
 
+# ---------------- Run Application ----------------
 root.mainloop()

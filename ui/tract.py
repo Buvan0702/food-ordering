@@ -1,78 +1,101 @@
-import tkinter as tk
-from tkinter import Frame, Label, Button
+import customtkinter as ctk
 
-# Main Window
-root = tk.Tk()
-root.title("Order Tracking")
-root.geometry("1000x600")
-root.configure(bg="white")
+# Sample Order Data
+order_details = {
+    "food_name": "Delicious Pizza",
+    "price": 12.99,
+    "quantity": 1,
+    "estimated_time": "15:00",
+    "status": 2,  # 0: Placed, 1: Preparing, 2: Out for Delivery, 3: Delivered
+    "address": "123, MG Road, Bangalore, India"
+}
 
-# Header Section
-header = Frame(root, bg="white", height=70)
-header.pack(fill=tk.X)
-Label(header, text="Order Tracking", font=("Arial", 18, "bold"), bg="white").pack(pady=10)
+# Status Steps
+status_steps = ["Order Placed", "Preparing", "Out for Delivery", "Delivered"]
 
-# Estimated Delivery Time Section
-delivery_frame = Frame(root, bg="white")
-delivery_frame.pack(fill=tk.X, pady=10, padx=20)
+class OrderTrackingApp(ctk.CTk):
+    def __init__(self):
+        super().__init__()
 
-Label(delivery_frame, text="Estimated Delivery Time:", font=("Arial", 12, "bold"), bg="white").pack(side=tk.LEFT)
-Label(delivery_frame, text="15:00", font=("Arial", 12, "bold"), fg="red", bg="white").pack(side=tk.RIGHT)
+        self.title("Order Tracking")
+        self.geometry("900x550")
+        
+        # Set Light Theme Colors
+        ctk.set_appearance_mode("light")
+        self.configure(bg="white")
 
-# Order Progress Bar
-progress_frame = Frame(root, bg="white", height=40)
-progress_frame.pack(fill=tk.X, padx=20)
+        # Header
+        ctk.CTkLabel(self, text="📦 Order Tracking", font=("Arial", 22, "bold"), text_color="black").pack(pady=10)
 
-Label(progress_frame, text="Order Placed ✅", font=("Arial", 10, "bold"), bg="white").pack(side=tk.LEFT, padx=20)
-Label(progress_frame, text="Preparing 🔍", font=("Arial", 10, "bold"), bg="white").pack(side=tk.LEFT, padx=20)
-Label(progress_frame, text="Out for Delivery 🚴", font=("Arial", 10, "bold"), bg="white").pack(side=tk.LEFT, padx=20)
-Label(progress_frame, text="Delivered 🎉", font=("Arial", 10, "bold"), bg="white").pack(side=tk.LEFT, padx=20)
+        # Delivery Time & Address
+        self.create_delivery_section()
 
-# Order Section
-Label(root, text="Your Order", font=("Arial", 14, "bold"), bg="white").pack(anchor="w", padx=20, pady=10)
+        # Progress Bar
+        self.create_progress_bar()
 
-order_frame = Frame(root, bg="#F5F5F5", bd=2, relief="solid", width=900, height=100)
-order_frame.pack(pady=5, padx=20, fill=tk.X)
+        # Order Details
+        ctk.CTkLabel(self, text="Your Order", font=("Arial", 16, "bold"), text_color="black").pack(anchor="w", padx=20, pady=10)
+        self.create_order_card()
 
-# Placeholder for food image
-food_placeholder = Frame(order_frame, bg="lightgray", width=80, height=80)
-food_placeholder.pack(side=tk.LEFT, padx=10, pady=10)
-Label(food_placeholder, text="80×80", font=("Arial", 10), bg="lightgray").pack(expand=True)
+        # Navigation Bar
+        self.create_navbar()
 
-# Food Details
-food_details = Frame(order_frame, bg="#F5F5F5")
-food_details.pack(side=tk.LEFT, padx=10, pady=10)
+    def create_delivery_section(self):
+        """Creates the estimated delivery section with address."""
+        frame = ctk.CTkFrame(self, fg_color="#F8F9FA", corner_radius=10)
+        frame.pack(fill="x", padx=20, pady=5)
 
-Label(food_details, text="Pizza", font=("Arial", 12, "bold"), bg="#F5F5F5").pack(anchor="w")
-Label(food_details, text="$12.99", font=("Arial", 12), bg="#F5F5F5").pack(anchor="w")
+        # Delivery Time
+        ctk.CTkLabel(frame, text="Estimated Delivery Time:", font=("Arial", 14, "bold"), text_color="black").pack(side="left", padx=10, pady=5)
+        ctk.CTkLabel(frame, text=order_details["estimated_time"], font=("Arial", 14, "bold"), text_color="red").pack(side="right", padx=20)
 
-# Quantity
-Label(order_frame, text="Quantity: 1", font=("Arial", 12), bg="#F5F5F5").pack(side=tk.RIGHT, padx=20)
+        # Delivery Address
+        ctk.CTkLabel(frame, text="Delivery Address:", font=("Arial", 12, "bold"), text_color="black").pack(anchor="w", padx=10, pady=2)
+        ctk.CTkLabel(frame, text=order_details["address"], font=("Arial", 12), text_color="gray").pack(anchor="w", padx=10, pady=2)
 
-# Delivery Location Section
-Label(root, text="Delivery Location", font=("Arial", 14, "bold"), bg="white").pack(anchor="w", padx=20, pady=10)
+    def create_progress_bar(self):
+        """Creates a real progress bar."""
+        progress_frame = ctk.CTkFrame(self, fg_color="white")
+        progress_frame.pack(fill="x", padx=20, pady=5)
 
-location_frame = Frame(root, bg="white")
-location_frame.pack(fill=tk.X, padx=20)
+        progress_bar = ctk.CTkProgressBar(progress_frame, width=800, height=12, fg_color="lightgray", progress_color="#3498DB")
+        progress_bar.pack(pady=10)
+        progress_bar.set(order_details["status"] / (len(status_steps) - 1))  # Normalize progress
 
-map_placeholder = Frame(location_frame, bg="lightgray", width=600, height=100)
-map_placeholder.pack(pady=5, padx=10)
-Label(map_placeholder, text="Map Placeholder", font=("Arial", 12), bg="lightgray").pack(expand=True)
+        # Status Labels
+        status_frame = ctk.CTkFrame(progress_frame, fg_color="white")
+        status_frame.pack(fill="x", pady=5)
 
-# Bottom Navigation Bar
-nav_bar = Frame(root, bg="white", height=50)
-nav_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        for i, step in enumerate(status_steps):
+            color = "black" if i <= order_details["status"] else "gray"
+            ctk.CTkLabel(status_frame, text=step, font=("Arial", 10, "bold"), text_color=color).pack(side="left", expand=True)
 
-# Navigation Bar Items with Icons
-nav_items = [
-    ("🏠 Home", "#2ECC71"),
-    ("📦 Orders", "#E67E22"),
-    ("🛒 Cart", "#3498DB"),
-    ("👤 Profile", "#9B59B6"),
-    ("⚙️ Settings", "#95A5A6")
-]
+    def create_order_card(self):
+        """Creates a structured order card."""
+        order_frame = ctk.CTkFrame(self, fg_color="#F8F9FA", corner_radius=10, border_width=1, border_color="gray")
+        order_frame.pack(pady=5, padx=20, fill="x")
 
-for item, color in nav_items:
-    Button(nav_bar, text=item, font=("Arial", 10), bg="white", fg=color, relief="flat").pack(side=tk.LEFT, expand=True, padx=20, pady=10)
+        # Order Details
+        text_frame = ctk.CTkFrame(order_frame, fg_color="#F8F9FA")
+        text_frame.pack(pady=10, padx=10, expand=True)
 
-root.mainloop()
+        ctk.CTkLabel(text_frame, text=order_details["food_name"], font=("Arial", 14, "bold"), text_color="black").pack(anchor="w")
+        ctk.CTkLabel(text_frame, text=f"Price: ${order_details['price']:.2f}", font=("Arial", 12), text_color="black").pack(anchor="w")
+        ctk.CTkLabel(text_frame, text=f"Quantity: {order_details['quantity']}", font=("Arial", 12), text_color="black").pack(anchor="w")
+
+    def create_navbar(self):
+        """Creates a bottom navigation bar."""
+        nav_frame = ctk.CTkFrame(self, fg_color="white", height=50)
+        nav_frame.pack(side="bottom", fill="x")
+
+        nav_items = ["🏠 Home", "📦 Orders", "🛒 Cart", "👤 Profile", "⚙️ Settings"]
+        colors = ["#2ECC71", "#E67E22", "#3498DB", "#9B59B6", "#95A5A6"]
+
+        for item, color in zip(nav_items, colors):
+            ctk.CTkButton(nav_frame, text=item, font=("Arial", 10), fg_color="white", text_color=color, width=100, height=30).pack(side="left", expand=True)
+
+
+# Run the Tkinter App
+if __name__ == "__main__":
+    app = OrderTrackingApp()
+    app.mainloop()

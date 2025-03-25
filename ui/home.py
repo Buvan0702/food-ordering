@@ -1,32 +1,34 @@
-import tkinter as tk
-from tkinter import Frame, Entry, Button, Label
+import customtkinter as ctk
+
+# Configure the theme
+ctk.set_appearance_mode("light")  # Options: "light", "dark", "system"
+ctk.set_default_color_theme("blue")  # You can change this to "green", "dark-blue", etc.
 
 # Main Window
-root = tk.Tk()
+root = ctk.CTk()
 root.title("Food Delivery UI")
 root.geometry("1000x600")
 root.configure(bg="white")
 
 # Header
-Label(root, text="Find Your Favorite Food", font=("Arial", 16, "bold"), bg="white").pack(pady=10)
+header_label = ctk.CTkLabel(root, text="Find Your Favorite Food", font=("Arial", 18, "bold"), fg_color="white", text_color="black")
+header_label.pack(pady=10)
 
 # Search Bar
-search_bar = Entry(root, font=("Arial", 12), width=80, relief="solid", bd=1)
-search_bar.insert(0, "🔍 Search for restaurants or dishes...")  # Placeholder
-search_bar.pack(pady=5, ipady=5)
+search_bar = ctk.CTkEntry(root, font=("Arial", 14), width=600, height=35, placeholder_text="🔍 Search for restaurants or dishes...", fg_color="white", text_color="black", border_color="gray")
+search_bar.pack(pady=5)
 
 # Category Buttons
 categories = ["FastFood", "Desserts", "Healthy", "Indian", "Chinese"]
-colors = ["#2ECC71", "#E67E22", "#E74C3C", "#F1C40F", "#8E44AD"]
-
-category_frame = Frame(root, bg="white")
+category_frame = ctk.CTkFrame(root, fg_color="white")
 category_frame.pack(pady=10)
 
-for i, category in enumerate(categories):
-    Button(category_frame, text=category, font=("Arial", 10), bg=colors[i], fg="white", padx=10, pady=5, relief="flat").pack(side=tk.LEFT, padx=5)
+for category in categories:
+    btn = ctk.CTkButton(category_frame, text=category, font=("Arial", 12, "bold"), corner_radius=10, width=120, fg_color="#FFA500", text_color="white", hover_color="#FF8C00")
+    btn.pack(side="left", padx=5)
 
 # Restaurant Listings
-restaurant_frame = Frame(root, bg="white")
+restaurant_frame = ctk.CTkFrame(root, fg_color="white")
 restaurant_frame.pack(pady=10)
 
 restaurants = [
@@ -36,33 +38,36 @@ restaurants = [
 ]
 
 for res_name, res_title, rating, delivery in restaurants:
-    card = Frame(restaurant_frame, bg="white", bd=2, relief="solid", width=300, height=200)
-    card.pack(side=tk.LEFT, padx=10, pady=10)
+    card = ctk.CTkFrame(restaurant_frame, width=300, height=180, corner_radius=10, fg_color="white", border_color="gray", border_width=2)
+    card.pack(side="left", padx=10, pady=10)
 
     # Placeholder for Image
-    Label(card, text=res_name, font=("Arial", 14, "bold"), bg="lightgray", width=30, height=6).pack()
+    img_label = ctk.CTkLabel(card, text=res_name, font=("Arial", 14, "bold"), width=280, height=80, fg_color="gray", text_color="white")
+    img_label.pack(pady=5)
 
     # Restaurant Details
-    Label(card, text=res_title, font=("Arial", 12, "bold"), bg="white").pack(anchor="w", padx=10, pady=5)
-    Label(card, text=rating, font=("Arial", 10), bg="white").pack(anchor="w", padx=10)
-    Label(card, text=delivery, font=("Arial", 10), bg="white").pack(anchor="w", padx=10)
+    ctk.CTkLabel(card, text=res_title, font=("Arial", 12, "bold"), fg_color="white", text_color="black").pack(anchor="w", padx=10, pady=3)
+    ctk.CTkLabel(card, text=rating, font=("Arial", 10), fg_color="white", text_color="black").pack(anchor="w", padx=10)
+    ctk.CTkLabel(card, text=delivery, font=("Arial", 10), fg_color="white", text_color="black").pack(anchor="w", padx=10)
 
     # View Menu Button
-    Button(card, text="View Menu", font=("Arial", 10, "bold"), bg="green", fg="white", relief="flat", width=20).pack(pady=10)
+    view_menu_btn = ctk.CTkButton(card, text="View Menu", font=("Arial", 10, "bold"), corner_radius=5, fg_color="green", text_color="white", width=180)
+    view_menu_btn.pack(pady=10)
 
 # Bottom Navigation Bar with Emojis
-nav_bar = Frame(root, bg="white", height=50)
-nav_bar.pack(side=tk.BOTTOM, fill=tk.X)
+nav_bar = ctk.CTkFrame(root, height=50, fg_color="white", border_width=1, border_color="gray")
+nav_bar.pack(side="bottom", fill="x")
 
 nav_items = [
-    ("🏠 Home", "#2ECC71"),
-    ("📦 Orders", "#E67E22"),
-    ("🛒 Cart", "#3498DB"),
-    ("👤 Profile", "#9B59B6"),
-    ("⚙️ Settings", "#95A5A6")
+    ("🏠 Home", "green"),
+    ("📦 Orders", "orange"),
+    ("🛒 Cart", "blue"),
+    ("👤 Profile", "purple"),
+    ("⚙️ Settings", "gray")
 ]
 
 for item, color in nav_items:
-    Button(nav_bar, text=item, font=("Arial", 10), bg="white", fg=color, relief="flat").pack(side=tk.LEFT, expand=True, padx=20, pady=10)
+    nav_btn = ctk.CTkButton(nav_bar, text=item, font=("Arial", 10), width=120, corner_radius=5, fg_color="white", text_color=color, hover_color="lightgray")
+    nav_btn.pack(side="left", expand=True, padx=10, pady=5)
 
 root.mainloop()
