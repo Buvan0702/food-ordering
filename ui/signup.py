@@ -2,15 +2,19 @@ import customtkinter as ctk
 from tkinter import messagebox
 import mysql.connector
 import hashlib
-import subprocess  # To open login.py
+import subprocess
+import os
+
+os.environ['TCL_LIBRARY'] = r"C:\Users\buvan\AppData\Local\Programs\Python\Python39\tcl\tcl8.6"
+os.environ['TK_LIBRARY'] = r"C:\Users\buvan\AppData\Local\Programs\Python\Python39\tcl\tk8.6"
 
 # ------------------- Database Connection -------------------
 def connect_db():
     return mysql.connector.connect(
         host="localhost",
-        user="root",  # Replace with your MySQL username
-        password="new_password",  # Replace with your MySQL password
-        database="food_system"  # Replace with your database name
+        user="root",
+        password="new_password",
+        database="food_system"
     )
 
 # ------------------- Password Hashing -------------------
@@ -64,73 +68,136 @@ def signup_user():
 # ------------------- Open Login Page -------------------
 def open_login_page():
     try:
-        subprocess.Popen(["python", "login.py"])  # Open login.py after successful signup
-        root.quit()  # Close the current signup window
+        subprocess.Popen(["python", "login.py"])
+        root.quit()
     except Exception as e:
         messagebox.showerror("Error", f"Unable to open login page: {e}")
 
-# ----------------- Setup -----------------
-ctk.set_appearance_mode("light")  # Light Mode
-ctk.set_default_color_theme("blue")  # Blue Theme
+# ---------------- Initialize CustomTkinter ----------------
+ctk.set_appearance_mode("light")
+ctk.set_default_color_theme("blue")
 
+# ---------------- Main Application Window ----------------
 root = ctk.CTk()
 root.title("Sign Up Page")
-root.geometry("1000x600")  
-root.resizable(False, False)  
+root.geometry("1000x600")
+root.resizable(False, False)
 
-# ---------------- Left Side: Sign-Up Form ----------------
-form_frame = ctk.CTkFrame(root, fg_color="white", width=350, height=450, corner_radius=20)
-form_frame.place(x=120, y=80)
+# ---------------- Background ----------------
+# Create a frame that covers the entire window with coral/orange background
+bg_frame = ctk.CTkFrame(root, fg_color="#FF8866", width=1000, height=600, corner_radius=0)
+bg_frame.place(x=0, y=0)
+
+# ---------------- Left Side Mobile Mockup ----------------
+# Phone frame
+phone_frame = ctk.CTkFrame(bg_frame, fg_color="#2B2B43", width=270, height=520, corner_radius=40)
+phone_frame.place(x=150, y=40)
+
+# Phone inner screen
+phone_screen = ctk.CTkFrame(phone_frame, fg_color="white", width=240, height=480, corner_radius=30)
+phone_screen.place(x=15, y=20)
+
+# Phone notch
+notch = ctk.CTkFrame(phone_screen, fg_color="#2B2B43", width=80, height=25, corner_radius=10)
+notch.place(x=80, y=0)
+
+# Product 1 (Bottle) - using an icon similar to login page
+product1_frame = ctk.CTkFrame(phone_screen, fg_color="#FFA500", width=200, height=130, corner_radius=10)
+product1_frame.place(x=20, y=40)
+
+# Using a bottle icon (similar to login page)
+bottle_label = ctk.CTkLabel(product1_frame, text="🍶", font=("Arial", 50), text_color="#2B2B43")
+bottle_label.place(relx=0.5, rely=0.4, anchor="center")
+
+# Product 1 buttons
+plus_btn1 = ctk.CTkButton(phone_screen, text="+", font=("Arial", 16, "bold"), fg_color="#FFA500", 
+                          text_color="white", width=30, height=30, corner_radius=15)
+plus_btn1.place(x=130, y=180)
+
+minus_btn1 = ctk.CTkButton(phone_screen, text="-", font=("Arial", 16, "bold"), fg_color="#FFA500", 
+                           text_color="white", width=30, height=30, corner_radius=15)
+minus_btn1.place(x=80, y=180)
+
+# Product 2 (Egg) - using an icon similar to login page
+product2_frame = ctk.CTkFrame(phone_screen, fg_color="#FFA500", width=200, height=130, corner_radius=10)
+product2_frame.place(x=20, y=230)
+
+# Using a magnifying glass icon like in the login image
+egg_label = ctk.CTkLabel(product2_frame, text="🔍", font=("Arial", 50), text_color="white")
+egg_label.place(relx=0.5, rely=0.4, anchor="center")
+
+# Product 2 buttons
+plus_btn2 = ctk.CTkButton(phone_screen, text="+", font=("Arial", 16, "bold"), fg_color="#FFA500", 
+                          text_color="white", width=30, height=30, corner_radius=15)
+plus_btn2.place(x=130, y=370)
+
+minus_btn2 = ctk.CTkButton(phone_screen, text="-", font=("Arial", 16, "bold"), fg_color="#FFA500", 
+                           text_color="white", width=30, height=30, corner_radius=15)
+minus_btn2.place(x=80, y=370)
+
+# Person silhouette - using a similar avatar as in the login page
+person_label = ctk.CTkLabel(bg_frame, text="👩", font=("Arial", 80), text_color="#2B2B43")
+person_label.place(x=500, y=250)
+
+# ---------------- Right Side Sign Up Form ----------------
+form_frame = ctk.CTkFrame(bg_frame, fg_color="white", width=400, height=600, corner_radius=20)
+form_frame.place(x=550, y=40)
 
 # Title
-ctk.CTkLabel(form_frame, text="Create Your Account ✨", font=("Arial", 18, "bold"), text_color="black").pack(pady=10)
+title_label = ctk.CTkLabel(form_frame, text="Create Account", font=("Arial", 24, "bold"), text_color="#2B2B43")
+title_label.place(relx=0.5, rely=0.08, anchor="center")
 
 # Full Name
-ctk.CTkLabel(form_frame, text="Full Name", font=("Arial", 12), text_color="black").pack(anchor="w", padx=30)
-name_entry = ctk.CTkEntry(form_frame, font=("Arial", 12), width=250, height=35, corner_radius=10)
-name_entry.pack(pady=5)
+name_label = ctk.CTkLabel(form_frame, text="Full Name", font=("Arial", 14), text_color="#2B2B43")
+name_label.place(x=50, y=80)
+
+name_entry = ctk.CTkEntry(form_frame, width=300, height=40, corner_radius=5, border_width=1, border_color="#E0E0E0")
+name_entry.place(x=50, y=110)
 
 # Email
-ctk.CTkLabel(form_frame, text="Email", font=("Arial", 12), text_color="black").pack(anchor="w", padx=30)
-email_entry = ctk.CTkEntry(form_frame, font=("Arial", 12), width=250, height=35, corner_radius=10)
-email_entry.pack(pady=5)
+email_label = ctk.CTkLabel(form_frame, text="Email", font=("Arial", 14), text_color="#2B2B43")
+email_label.place(x=50, y=160)
+
+email_entry = ctk.CTkEntry(form_frame, width=300, height=40, corner_radius=5, border_width=1, border_color="#E0E0E0")
+email_entry.place(x=50, y=190)
 
 # Phone Number
-ctk.CTkLabel(form_frame, text="Phone Number", font=("Arial", 12), text_color="black").pack(anchor="w", padx=30)
-phone_entry = ctk.CTkEntry(form_frame, font=("Arial", 12), width=250, height=35, corner_radius=10)
-phone_entry.pack(pady=5)
+phone_label = ctk.CTkLabel(form_frame, text="Phone Number", font=("Arial", 14), text_color="#2B2B43")
+phone_label.place(x=50, y=240)
+
+phone_entry = ctk.CTkEntry(form_frame, width=300, height=40, corner_radius=5, border_width=1, border_color="#E0E0E0")
+phone_entry.place(x=50, y=270)
 
 # Password
-ctk.CTkLabel(form_frame, text="Password", font=("Arial", 12), text_color="black").pack(anchor="w", padx=30)
-password_entry = ctk.CTkEntry(form_frame, font=("Arial", 12), width=250, height=35, corner_radius=10, show="*")
-password_entry.pack(pady=5)
+password_label = ctk.CTkLabel(form_frame, text="Password", font=("Arial", 14), text_color="#2B2B43")
+password_label.place(x=50, y=320)
+
+password_entry = ctk.CTkEntry(form_frame, width=300, height=40, corner_radius=5, border_width=1, border_color="#E0E0E0", show="*")
+password_entry.place(x=50, y=350)
 
 # Confirm Password
-ctk.CTkLabel(form_frame, text="Confirm Password", font=("Arial", 12), text_color="black").pack(anchor="w", padx=30)
-confirm_entry = ctk.CTkEntry(form_frame, font=("Arial", 12), width=250, height=35, corner_radius=10, show="*")
-confirm_entry.pack(pady=5)
+confirm_label = ctk.CTkLabel(form_frame, text="Confirm Password", font=("Arial", 14), text_color="#2B2B43")
+confirm_label.place(x=50, y=400)
 
-# Sign Up Button with Hover Effect
-signup_button = ctk.CTkButton(form_frame, text="Sign Up", font=("Arial", 14, "bold"), fg_color="red",
-                              text_color="white", width=250, height=40, corner_radius=10,
-                              hover_color="#b71c1c", command=signup_user)
-signup_button.pack(pady=15)
+confirm_entry = ctk.CTkEntry(form_frame, width=300, height=40, corner_radius=5, border_width=1, border_color="#E0E0E0", show="*")
+confirm_entry.place(x=50, y=430)
 
-# Footer Links
-footer_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-footer_frame.pack()
-ctk.CTkLabel(footer_frame, text="Already have an account?", text_color="black", font=("Arial", 11)).pack(side="left", padx=15)
-login_label = ctk.CTkLabel(footer_frame, text="Login", text_color="red", font=("Arial", 11, "bold"), cursor="hand2")
-login_label.pack(side="right", padx=15)
+# Sign Up Button - similar to the orange login button in the reference image
+signup_button = ctk.CTkButton(form_frame, text="Sign Up", font=("Arial", 16, "bold"), fg_color="#FF7722", 
+                             text_color="white", width=300, height=40, corner_radius=5, 
+                             hover_color="#E56600", command=signup_user)
+signup_button.place(x=50, y=480)
 
-# Bind Login label to open login.py
-login_label.bind("<Button-1>", lambda e: open_login_page())  # Open login page when clicked
+# Already have an account / Login link - styled like the login page
+# Fix: Directly place the labels in the form instead of using an extra frame
+already_account_label = ctk.CTkLabel(form_frame, text="Already have an account?", font=("Arial", 12), text_color="#555555")
+already_account_label.place(x=50, y=540)
 
-# ---------------- Right Side: Mobile UI Mockup ----------------
-right_frame = ctk.CTkFrame(root, fg_color="white", width=250, height=450, corner_radius=20)
-right_frame.place(x=600, y=80)
+login_link = ctk.CTkLabel(form_frame, text="Login Now", font=("Arial", 12), text_color="#FF7722", cursor="hand2")
+login_link.place(x=300, y=540)
 
-ctk.CTkLabel(right_frame, text="📱 Mobile UI Preview", font=("Arial", 14, "bold"), text_color="black").pack(expand=True)
+# Bind the login link
+login_link.bind("<Button-1>", lambda e: open_login_page())
 
 # ---------------- Run Application ----------------
 root.mainloop()

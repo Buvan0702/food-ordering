@@ -1,12 +1,19 @@
 import customtkinter as ctk
-from PIL import Image, ImageTk
+import subprocess
 import os
+
+os.environ['TCL_LIBRARY'] = r"C:\Users\buvan\AppData\Local\Programs\Python\Python39\tcl\tcl8.6"
+os.environ['TK_LIBRARY'] = r"C:\Users\buvan\AppData\Local\Programs\Python\Python39\tcl\tk8.6"
+
+# Configure CustomTkinter
+ctk.set_appearance_mode("light")
+ctk.set_default_color_theme("blue")
 
 # Sample cart items
 cart_items = [
-    {"name": "Delicious Pizza", "price": 12.99, "quantity": 1, "image": "pizza.png"},
-    {"name": "Tasty Burger", "price": 9.99, "quantity": 1, "image": "burger.png"},
-    {"name": "Chocolate Cake", "price": 5.99, "quantity": 1, "image": "cake.png"}
+    {"name": "Delicious Pizza", "price": 12.99, "quantity": 1},
+    {"name": "Tasty Burger", "price": 9.99, "quantity": 1},
+    {"name": "Chocolate Cake", "price": 5.99, "quantity": 1}
 ]
 
 class ShoppingCartApp(ctk.CTk):
@@ -14,117 +21,232 @@ class ShoppingCartApp(ctk.CTk):
         super().__init__()
 
         self.title("Shopping Cart")
-        self.geometry("900x600")
-        self.configure(bg="white")
+        self.geometry("1000x800")
+        self.resizable(False, False)
+
+        # Main white frame with rounded corners
+        self.main_frame = ctk.CTkFrame(self, fg_color="white", corner_radius=20)
+        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Header
-        header = ctk.CTkLabel(self, text="🛒 Your Shopping Cart", font=("Arial", 20, "bold"), fg_color="white", text_color="black")
-        header.pack(pady=10)
+        self.header_label = ctk.CTkLabel(
+            self.main_frame, 
+            text="Your Shopping Cart", 
+            font=("Arial", 24, "bold"), 
+            text_color="#1F2937"
+        )
+        self.header_label.pack(pady=(30, 20))
 
-        # Cart Frame
-        self.cart_frame = ctk.CTkFrame(self, fg_color="white")
-        self.cart_frame.pack(pady=5, padx=10, fill="both", expand=True)
+        # Cart items frame
+        self.cart_items_frame = ctk.CTkFrame(
+            self.main_frame, 
+            fg_color="white", 
+            width=800
+        )
+        self.cart_items_frame.pack(fill="both", expand=True, padx=50, pady=0)
 
-        # Create Cart Items
-        self.cart_widgets = []
-        self.total_price = ctk.DoubleVar()
-        self.update_cart()
+        # Create cart items
+        self.create_cart_items()
 
-        # Bottom Total and Checkout Button
-        self.bottom_frame = ctk.CTkFrame(self, fg_color="white")
-        self.bottom_frame.pack(fill="x", padx=20, pady=5)
+        # Total section
+        self.total_frame = ctk.CTkFrame(
+            self.main_frame, 
+            fg_color="white", 
+            height=60
+        )
+        self.total_frame.pack(fill="x", padx=50, pady=(10, 20))
 
-        ctk.CTkLabel(self.bottom_frame, text="Total:", font=("Arial", 14, "bold"), fg_color="white", text_color="black").pack(side="left", padx=10)
-        self.total_label = ctk.CTkLabel(self.bottom_frame, text=f"${self.total_price.get():.2f}", font=("Arial", 14, "bold"), fg_color="white", text_color="black")
-        self.total_label.pack(side="left")
+        # Total label
+        self.total_label = ctk.CTkLabel(
+            self.total_frame, 
+            text="Total:", 
+            font=("Arial", 18, "bold"), 
+            text_color="#1F2937"
+        )
+        self.total_label.place(x=0, y=15)
 
-        self.checkout_btn = ctk.CTkButton(self.bottom_frame, text="Proceed to Payment", font=("Arial", 12, "bold"),
-                                          fg_color="green", text_color="white", width=200, height=40, command=self.checkout)
-        self.checkout_btn.pack(side="right", padx=10)
+        # Calculate total
+        total_amount = sum(item["price"] * item["quantity"] for item in cart_items)
+        
+        # Total amount
+        self.total_amount_label = ctk.CTkLabel(
+            self.total_frame, 
+            text=f"${total_amount:.2f}", 
+            font=("Arial", 18, "bold"), 
+            text_color="#1F2937"
+        )
+        self.total_amount_label.place(relx=0.95, y=15, anchor="e")
 
-        # Bottom Navigation Bar
-        self.create_navbar()
+        # Proceed to Payment button
+        self.checkout_button = ctk.CTkButton(
+            self.main_frame,
+            text="Proceed to Payment",
+            font=("Arial", 16, "bold"),
+            fg_color="#22C55E",
+            text_color="white",
+            hover_color="#16A34A",
+            corner_radius=5,
+            width=700,
+            height=50
+        )
+        self.checkout_button.pack(pady=(0, 30))
 
-    def load_image(self, path, size=(60, 60)):
-        """Load an image, or use a default placeholder if missing"""
-        if not os.path.exists(path):
-            path = "default.png"  # Fallback image
-        img = Image.open(path).resize(size)
-        return ImageTk.PhotoImage(img)
+        # Bottom Navigation
+        self.create_bottom_navigation()
 
-    def update_cart(self):
-        """Update cart items and total price"""
-        for widget in self.cart_widgets:
-            widget.destroy()
+    def create_cart_items(self):
+        """Create cart item rows"""
+        # Separator line at the top
+        self.separator_top = ctk.CTkFrame(
+            self.cart_items_frame, 
+            height=1, 
+            fg_color="#E5E7EB"
+        )
+        self.separator_top.pack(fill="x", pady=(0, 15))
 
-        self.cart_widgets = []
-        self.total_price.set(0)
+        for item in cart_items:
+            # Item frame
+            item_frame = ctk.CTkFrame(
+                self.cart_items_frame,
+                fg_color="white",
+                height=80
+            )
+            item_frame.pack(fill="x", pady=10)
+            item_frame.pack_propagate(False)
+            
+            # Image placeholder
+            img_placeholder = ctk.CTkFrame(
+                item_frame,
+                fg_color="#E5E7EB",
+                width=70,
+                height=70,
+                corner_radius=5
+            )
+            img_placeholder.place(x=0, y=5)
+            
+            food_label = ctk.CTkLabel(img_placeholder, text="Food Item", text_color="#9CA3AF", font=("Arial", 9))
+            food_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        for index, item in enumerate(cart_items):
-            frame = ctk.CTkFrame(self.cart_frame, fg_color="white", border_color="gray", border_width=1)
-            frame.pack(fill="x", padx=10, pady=5)
+            # Item name and price
+            name_label = ctk.CTkLabel(
+                item_frame, 
+                text=item["name"], 
+                font=("Arial", 16, "bold"), 
+                text_color="#1F2937",
+                anchor="w"
+            )
+            name_label.place(x=90, y=15)
+            
+            price_label = ctk.CTkLabel(
+                item_frame, 
+                text=f"${item['price']:.2f}", 
+                font=("Arial", 14), 
+                text_color="#6B7280",
+                anchor="w"
+            )
+            price_label.place(x=90, y=45)
+            
+            # Quantity buttons
+            # Minus button
+            minus_btn = ctk.CTkButton(
+                item_frame,
+                text="-",
+                font=("Arial", 16, "bold"),
+                fg_color="#E5E7EB",
+                text_color="#4B5563",
+                hover_color="#D1D5DB",
+                width=35,
+                height=35,
+                corner_radius=5
+            )
+            minus_btn.place(relx=0.95, y=25, anchor="e", x=-70)
+            
+            # Quantity
+            qty_label = ctk.CTkLabel(
+                item_frame,
+                text=f"{item['quantity']}",
+                font=("Arial", 15),
+                text_color="#1F2937"
+            )
+            qty_label.place(relx=0.95, y=25, anchor="e", x=-40)
+            
+            # Plus button
+            plus_btn = ctk.CTkButton(
+                item_frame,
+                text="+",
+                font=("Arial", 16, "bold"),
+                fg_color="#E5E7EB",
+                text_color="#4B5563",
+                hover_color="#D1D5DB",
+                width=35,
+                height=35,
+                corner_radius=5
+            )
+            plus_btn.place(relx=0.95, y=25, anchor="e", x=-10)
 
-            # Item Image
-            img = self.load_image(item["image"])
-            img_label = ctk.CTkLabel(frame, image=img, text="")
-            img_label.image = img
-            img_label.pack(side="left", padx=10, pady=5)
+            # Separator line after each item (except the last one)
+            if item != cart_items[-1]:
+                separator = ctk.CTkFrame(
+                    self.cart_items_frame, 
+                    height=1, 
+                    fg_color="#E5E7EB"
+                )
+                separator.pack(fill="x", pady=(15, 0))
 
-            # Item Name and Price
-            text_frame = ctk.CTkFrame(frame, fg_color="white")
-            text_frame.pack(side="left", padx=10, fill="x", expand=True)
-            ctk.CTkLabel(text_frame, text=item["name"], font=("Arial", 12, "bold"), fg_color="white", text_color="black").pack(anchor="w")
-            ctk.CTkLabel(text_frame, text=f"${item['price']:.2f}", font=("Arial", 10), fg_color="white", text_color="gray").pack(anchor="w")
+        # Separator line at the bottom
+        self.separator_bottom = ctk.CTkFrame(
+            self.cart_items_frame, 
+            height=1, 
+            fg_color="#E5E7EB"
+        )
+        self.separator_bottom.pack(fill="x", pady=(15, 0))
 
-            # Quantity Controls
-            qty_frame = ctk.CTkFrame(frame, fg_color="white")
-            qty_frame.pack(side="right", padx=10)
+    def create_bottom_navigation(self):
+        """Create bottom navigation bar"""
+        nav_bar = ctk.CTkFrame(
+            self.main_frame,
+            fg_color="white",
+            height=80,
+            corner_radius=0
+        )
+        nav_bar.pack(side="bottom", fill="x")
+        
+        # Define navigation items
+        nav_items = [
+            {"name": "Home", "icon": "🏠", "active": False},
+            {"name": "Orders", "icon": "📦", "active": False},
+            {"name": "Cart", "icon": "🛒", "active": True},
+            {"name": "Profile", "icon": "👤", "active": False},
+            {"name": "Settings", "icon": "⚙️", "active": False}
+        ]
+        
+        # Create navigation buttons
+        for item in nav_items:
+            nav_frame = ctk.CTkFrame(nav_bar, fg_color="transparent", width=80)
+            nav_frame.pack(side="left", expand=True, fill="y")
+            
+            # Color for active/inactive items
+            text_color = "#22C55E" if item["active"] else "#1F2937"
+            
+            # Icon
+            icon_label = ctk.CTkLabel(
+                nav_frame,
+                text=item["icon"],
+                font=("Arial", 24),
+                text_color=text_color
+            )
+            icon_label.pack(pady=(10, 0))
+            
+            # Text
+            text_label = ctk.CTkLabel(
+                nav_frame,
+                text=item["name"],
+                font=("Arial", 12),
+                text_color=text_color
+            )
+            text_label.pack()
 
-            ctk.CTkButton(qty_frame, text="-", font=("Arial", 10, "bold"), fg_color="gray", text_color="white", width=30,
-                          command=lambda i=index: self.update_quantity(i, -1)).pack(side="left", padx=5)
-
-            ctk.CTkLabel(qty_frame, text=item["quantity"], font=("Arial", 12), fg_color="white", text_color="black").pack(side="left")
-
-            ctk.CTkButton(qty_frame, text="+", font=("Arial", 10, "bold"), fg_color="gray", text_color="white", width=30,
-                          command=lambda i=index: self.update_quantity(i, 1)).pack(side="left", padx=5)
-
-            # Add to total price
-            self.total_price.set(self.total_price.get() + (item["price"] * item["quantity"]))
-
-        # Update total label
-        self.total_label.configure(text=f"${self.total_price.get():.2f}")
-
-    def update_quantity(self, index, change):
-        """Update the quantity of an item"""
-        if cart_items[index]["quantity"] + change > 0:
-            cart_items[index]["quantity"] += change
-            self.update_cart()
-
-    def checkout(self):
-        """Checkout button action"""
-        print("Proceeding to Payment...")
-
-    def create_navbar(self):
-        """Creates a bottom navigation bar"""
-        nav_frame = ctk.CTkFrame(self, fg_color="white", height=50)
-        nav_frame.pack(side="bottom", fill="x")
-
-        icons = ["home.png", "orders.png", "cart.png", "profile.png", "settings.png"]
-        labels = ["Home", "Orders", "Cart", "Profile", "Settings"]
-
-        for i in range(5):
-            btn_frame = ctk.CTkFrame(nav_frame, fg_color="white")
-            btn_frame.pack(side="left", expand=True)
-
-            img = self.load_image(icons[i], size=(30, 30))
-            img_label = ctk.CTkLabel(btn_frame, image=img, text="")
-            img_label.image = img
-            img_label.pack()
-
-            ctk.CTkLabel(btn_frame, text=labels[i], font=("Arial", 10), fg_color="white", text_color="black").pack()
-
-
-# Run the Tkinter App
+# Run the application
 if __name__ == "__main__":
     app = ShoppingCartApp()
     app.mainloop()
