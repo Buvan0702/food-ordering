@@ -1,65 +1,70 @@
 import customtkinter as ctk
 from tkinter import messagebox
-import mysql.connector
-import hashlib
 import subprocess
-import os
 
-os.environ['TCL_LIBRARY'] = r"C:\Users\buvan\AppData\Local\Programs\Python\Python39\tcl\tcl8.6"
-os.environ['TK_LIBRARY'] = r"C:\Users\buvan\AppData\Local\Programs\Python\Python39\tcl\tk8.6"
-
-# ------------------- Database Connection -------------------
-def connect_db():
-    return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="new_password",
-        database="food_system"
-    )
-
-# ------------------- Password Hashing -------------------
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+# Import our custom utility classes
+from db_connection import DatabaseConnection
+from password_utility import PasswordManager
 
 # ------------------- Login Function -------------------
 def login_user():
-    email = email_entry.get()
+    email = email_entry.get().strip()
     password = password_entry.get()
 
+    # Input validation
     if not email or not password:
         messagebox.showwarning("Input Error", "Please enter both email and password.")
         return
+    
+    # Validate email format
+    if not is_valid_email(email):
+        messagebox.showwarning("Invalid Email", "Please enter a valid email address.")
+        return
 
-    hashed_password = hash_password(password)
+    # Hash the password
+    hashed_password = PasswordManager.hash_password(password)
 
     try:
-        connection = connect_db()
-        cursor = connection.cursor()
-        cursor.execute(
-            "SELECT first_name, last_name FROM Users WHERE email = %s AND password = %s",
-            (email, hashed_password)
+        # Use the database connection utility to execute login query
+        query = """
+        SELECT user_id, first_name, last_name 
+        FROM Users 
+        WHERE email = %s AND password = %s
+        """
+        results = DatabaseConnection.execute_query(
+            query, 
+            params=(email, hashed_password), 
+            fetch=True
         )
-        user = cursor.fetchone()
 
-        if user:
-            first_name, last_name = user
-            messagebox.showinfo("Success", f"Welcome {first_name} {last_name}!")
-            root.destroy()  # Close the login window upon successful login
-            open_home_page()  # Open the home page after login
+        if results:
+            # Login successful
+            user = results[0]
+            messagebox.showinfo("Success", f"Welcome {user['first_name']} {user['last_name']}!")
+            root.destroy()  # Close the login window
+            open_home_page(user['user_id'])  # Pass user ID to home page
         else:
             messagebox.showerror("Login Failed", "Invalid Email or Password.")
     
-    except mysql.connector.Error as err:
-        messagebox.showerror("Database Error", str(err))
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
+    except Exception as err:
+        messagebox.showerror("Login Error", f"An error occurred: {str(err)}")
+
+# ------------------- Email Validation -------------------
+def is_valid_email(email):
+    """
+    Validate email format using a simple regex pattern
+    """
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(email_regex, email) is not None
 
 # ------------------- Open Home Page -------------------
-def open_home_page():
+def open_home_page(user_id=None):
     try:
-        subprocess.Popen(["python", "home.py"])
+        # Pass user ID to home page if available
+        if user_id:
+            subprocess.Popen(["python", "home.py", str(user_id)])
+        else:
+            subprocess.Popen(["python", "home.py"])
     except Exception as e:
         messagebox.showerror("Error", f"Unable to open home page: {e}")
 
@@ -177,6 +182,9 @@ register.place(x=280, y=340)
 
 # Bind the register label to open signup page
 register.bind("<Button-1>", lambda e: open_signup_page())
+
+# Additional import for email validation
+import re
 
 # ---------------- Run Application ----------------
 root.mainloop()

@@ -1,37 +1,84 @@
 import customtkinter as ctk
 from tkinter import messagebox
-import mysql.connector
-import hashlib
+import re
 import subprocess
-import os
 
-os.environ['TCL_LIBRARY'] = r"C:\Users\buvan\AppData\Local\Programs\Python\Python39\tcl\tcl8.6"
-os.environ['TK_LIBRARY'] = r"C:\Users\buvan\AppData\Local\Programs\Python\Python39\tcl\tk8.6"
+# Import our custom utility classes
+from db_connection import DatabaseConnection
+from password_utility import PasswordManager
 
-# ------------------- Database Connection -------------------
-def connect_db():
-    return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="new_password",
-        database="food_system"
-    )
+# ------------------- Validation Functions -------------------
+def validate_full_name(name):
+    """
+    Validate full name:
+    - Must contain at least two words
+    - Only letters and spaces allowed
+    """
+    if not name:
+        return False
+    
+    # Split the name and check if it has at least two parts
+    name_parts = name.split()
+    if len(name_parts) < 2:
+        return False
+    
+    # Check that name contains only letters and spaces
+    return all(part.isalpha() for part in name_parts)
 
-# ------------------- Password Hashing -------------------
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+def validate_email(email):
+    """
+    Validate email format
+    """
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(email_regex, email) is not None
+
+def validate_phone_number(phone):
+    """
+    Validate phone number:
+    - Only digits allowed
+    - Between 10-15 digits
+    """
+    # Remove any spaces or dashes
+    cleaned_phone = re.sub(r'[\s-]', '', phone)
+    return cleaned_phone.isdigit() and 10 <= len(cleaned_phone) <= 15
 
 # ------------------- Sign Up Function -------------------
 def signup_user():
-    full_name = name_entry.get()
-    email = email_entry.get()
-    phone_number = phone_entry.get()
+    full_name = name_entry.get().strip()
+    email = email_entry.get().strip()
+    phone_number = phone_entry.get().strip()
     password = password_entry.get()
     confirm_password = confirm_entry.get()
 
-    # Check if any fields are empty
+    # Comprehensive input validation
     if not full_name or not email or not phone_number or not password or not confirm_password:
         messagebox.showwarning("Input Error", "All fields are required.")
+        return
+
+    # Validate full name
+    if not validate_full_name(full_name):
+        messagebox.showwarning("Name Error", "Please enter a valid full name (at least two words, letters only).")
+        return
+
+    # Validate email
+    if not validate_email(email):
+        messagebox.showwarning("Email Error", "Please enter a valid email address.")
+        return
+
+    # Validate phone number
+    if not validate_phone_number(phone_number):
+        messagebox.showwarning("Phone Error", "Please enter a valid phone number.")
+        return
+
+    # Validate password strength
+    if not PasswordManager.validate_password(password):
+        messagebox.showwarning("Password Error", 
+            "Password must be at least 8 characters long and contain:\n"
+            "- At least one uppercase letter\n"
+            "- At least one lowercase letter\n"
+            "- At least one digit\n"
+            "- At least one special character"
+        )
         return
 
     # Check if passwords match
@@ -40,30 +87,43 @@ def signup_user():
         return
 
     # Hash the password
-    hashed_password = hash_password(password)
+    hashed_password = PasswordManager.hash_password(password)
 
     try:
-        connection = connect_db()
-        cursor = connection.cursor()
-
-        # Insert the user data into the database
-        cursor.execute(
-            "INSERT INTO Users (full_name, email, phone_number, password) VALUES (%s, %s, %s, %s)",
-            (full_name, email, phone_number, hashed_password)
+        # Check if email already exists
+        check_query = "SELECT user_id FROM Users WHERE email = %s"
+        existing_user = DatabaseConnection.execute_query(
+            check_query, 
+            params=(email,), 
+            fetch=True
         )
 
-        connection.commit()
+        if existing_user:
+            messagebox.showwarning("Registration Error", "Email already exists. Please use a different email.")
+            return
+
+        # Insert the user data into the database
+        insert_query = """
+        INSERT INTO Users (first_name, last_name, email, phone_number, password) 
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        # Split full name into first and last name
+        name_parts = full_name.split(maxsplit=1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+        DatabaseConnection.execute_query(
+            insert_query, 
+            params=(first_name, last_name, email, phone_number, hashed_password)
+        )
+
         messagebox.showinfo("Success", "User registered successfully!")
         
         # After successful registration, redirect to login page
         open_login_page()
 
-    except mysql.connector.Error as err:
-        messagebox.showerror("Database Error", str(err))
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
+    except Exception as err:
+        messagebox.showerror("Registration Error", f"An error occurred: {str(err)}")
 
 # ------------------- Open Login Page -------------------
 def open_login_page():
@@ -72,6 +132,9 @@ def open_login_page():
         root.quit()
     except Exception as e:
         messagebox.showerror("Error", f"Unable to open login page: {e}")
+
+# Rest of the UI code remains the same as in the original script
+# (Keeping all the CustomTkinter UI setup from the previous script)
 
 # ---------------- Initialize CustomTkinter ----------------
 ctk.set_appearance_mode("light")
@@ -189,7 +252,6 @@ signup_button = ctk.CTkButton(form_frame, text="Sign Up", font=("Arial", 16, "bo
 signup_button.place(x=50, y=480)
 
 # Already have an account / Login link - styled like the login page
-# Fix: Directly place the labels in the form instead of using an extra frame
 already_account_label = ctk.CTkLabel(form_frame, text="Already have an account?", font=("Arial", 12), text_color="#555555")
 already_account_label.place(x=50, y=540)
 
