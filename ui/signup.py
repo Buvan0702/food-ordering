@@ -115,7 +115,7 @@ def signup_user():
 
         DatabaseConnection.execute_query(
             insert_query, 
-            params=(first_name, last_name, email, phone_number, hashed_password)
+            params=(first_name, last_name, email, phone_number, hashed_password,address)
         )
 
         messagebox.showinfo("Success", "User registered successfully!")

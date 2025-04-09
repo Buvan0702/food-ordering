@@ -32,6 +32,7 @@ class FoodDeliveryDatabaseSetup:
                     user=self.db_config['user'],
                     password=self.db_config['password']
                 )
+            print("Database connection successful!")
             return connection
         except Error as e:
             print(f"Error: {e}")
@@ -369,19 +370,17 @@ class FoodDeliveryApp:
         # Buttons frame
         buttons_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         buttons_frame.pack(expand=True)
-
-        # # Setup Database Button
-        # setup_db_btn = ctk.CTkButton(
-        #     buttons_frame, 
-        #     text="Setup Database", 
-        #     font=("Arial", 18, "bold"),
-        #     fg_color="#FFFFFF", 
-        #     text_color="#FF8866",
-        #     hover_color="#F0F0F0",
-        #     width=300, 
-        #     height=60,
-        #     command=self.setup_database
-        # )
+        # Setup Database Button
+        # Run database setup automatically
+        try:
+            db_setup = FoodDeliveryDatabaseSetup()
+            success = db_setup.setup_complete_database()
+            if success:
+                print("Database setup completed successfully!")
+            else:
+                print("Failed to setup database. Check console for details.")
+        except Exception as e:
+            print(f"Database setup error: {e}")
         # setup_db_btn.pack(pady=10)
 
         # Login Button
