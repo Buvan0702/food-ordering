@@ -370,19 +370,19 @@ class FoodDeliveryApp:
         buttons_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         buttons_frame.pack(expand=True)
 
-        # Setup Database Button
-        setup_db_btn = ctk.CTkButton(
-            buttons_frame, 
-            text="Setup Database", 
-            font=("Arial", 18, "bold"),
-            fg_color="#FFFFFF", 
-            text_color="#FF8866",
-            hover_color="#F0F0F0",
-            width=300, 
-            height=60,
-            command=self.setup_database
-        )
-        setup_db_btn.pack(pady=10)
+        # # Setup Database Button
+        # setup_db_btn = ctk.CTkButton(
+        #     buttons_frame, 
+        #     text="Setup Database", 
+        #     font=("Arial", 18, "bold"),
+        #     fg_color="#FFFFFF", 
+        #     text_color="#FF8866",
+        #     hover_color="#F0F0F0",
+        #     width=300, 
+        #     height=60,
+        #     command=self.setup_database
+        # )
+        # setup_db_btn.pack(pady=10)
 
         # Login Button
         login_btn = ctk.CTkButton(

@@ -101,11 +101,12 @@ def signup_user():
         if existing_user:
             messagebox.showwarning("Registration Error", "Email already exists. Please use a different email.")
             return
-
+        
         # Insert the user data into the database
+        address=None
         insert_query = """
-        INSERT INTO Users (first_name, last_name, email, phone_number, password) 
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO Users (first_name, last_name, email, phone_number, password,address) 
+        VALUES (%s, %s, %s, %s, %s,%s)
         """
         # Split full name into first and last name
         name_parts = full_name.split(maxsplit=1)
