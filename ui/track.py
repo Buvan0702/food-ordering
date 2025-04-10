@@ -1,8 +1,11 @@
 import customtkinter as ctk
 import subprocess
 import sys
+import os
+from PIL import Image
 from db_connection import DatabaseConnection
 from datetime import datetime, timedelta
+from image_handler import ImageHandler
 
 class OrderTrackingApp:
     def __init__(self, user_id=None):
@@ -18,6 +21,9 @@ class OrderTrackingApp:
 
         # Store user ID
         self.user_id = user_id
+        
+        # Initialize image handler
+        self.image_handler = ImageHandler()
 
         # Order status mapping
         self.status_map = {
@@ -47,8 +53,8 @@ class OrderTrackingApp:
             query = """
             SELECT o.order_id, o.total_amount, o.order_date, o.status, 
                    o.estimated_delivery_time, o.delivery_address,
-                   r.restaurant_name,
-                   oi.quantity, mi.item_name, mi.price
+                   r.restaurant_id, r.restaurant_name, 
+                   oi.quantity, mi.menu_item_id, mi.item_name, mi.price
             FROM Orders o
             JOIN OrderItems oi ON o.order_id = oi.order_id
             JOIN MenuItems mi ON oi.menu_item_id = mi.menu_item_id
@@ -208,6 +214,29 @@ class OrderTrackingApp:
             text_color="#6B7280"
         )
         no_orders_label.pack(expand=True)
+        
+        # Add button to view past orders
+        view_past_btn = ctk.CTkButton(
+            self.card_frame,
+            text="View Past Orders",
+            font=("Arial", 16),
+            fg_color="#6B7280",
+            text_color="white",
+            hover_color="#4B5563",
+            width=200,
+            height=40,
+            command=self.view_past_orders
+        )
+        view_past_btn.pack(pady=20)
+
+    def view_past_orders(self):
+        """Navigate to past orders view"""
+        try:
+            # In a real implementation, you would create a past_orders.py file
+            # or implement a filter in the current view
+            pass
+        except Exception as e:
+            print(f"Error navigating to past orders: {e}")
 
     def create_estimated_time(self):
         """
@@ -292,7 +321,7 @@ class OrderTrackingApp:
 
     def create_order_details(self):
         """
-        Create order details section with food items
+        Create order details section with food items and images
         """
         # Your Order Heading
         self.order_heading = ctk.CTkLabel(
@@ -308,27 +337,52 @@ class OrderTrackingApp:
         self.order_frame = ctk.CTkFrame(self.card_frame, fg_color="#F9FAFB", corner_radius=10)
         self.order_frame.pack(fill="x", padx=30, pady=5)
         
-        # Image placeholder
+        # Image placeholder for food item
         img_placeholder = ctk.CTkFrame(self.order_frame, fg_color="#E5E7EB", width=80, height=80, corner_radius=5)
         img_placeholder.pack(side="left", padx=20, pady=15)
         
-        # "80 × 80" text in the center of the placeholder
-        placeholder_text = ctk.CTkLabel(img_placeholder, text="80 × 80", font=("Arial", 10), text_color="#9CA3AF")
-        placeholder_text.place(relx=0.5, rely=0.5, anchor="center")
+        # Get menu item image
+        menu_item_id = self.current_order.get('menu_item_id')
+        if menu_item_id:
+            food_image = self.image_handler.get_menu_item_image(menu_item_id, size=(80, 80))
+            if food_image:
+                # Show actual food image
+                img_label = ctk.CTkLabel(img_placeholder, image=food_image, text="")
+                img_label.place(relx=0.5, rely=0.5, anchor="center")
+            else:
+                # Fallback to text
+                placeholder_text = ctk.CTkLabel(img_placeholder, text="Food Item", font=("Arial", 10), text_color="#9CA3AF")
+                placeholder_text.place(relx=0.5, rely=0.5, anchor="center")
+        else:
+            # Fallback to text
+            placeholder_text = ctk.CTkLabel(img_placeholder, text="Food Item", font=("Arial", 10), text_color="#9CA3AF")
+            placeholder_text.place(relx=0.5, rely=0.5, anchor="center")
         
         # Food details
         details_frame = ctk.CTkFrame(self.order_frame, fg_color="transparent", width=200)
         details_frame.pack(side="left", fill="y", pady=15, padx=(0, 20))
         
+        # Restaurant name with small icon
+        restaurant_frame = ctk.CTkFrame(details_frame, fg_color="transparent")
+        restaurant_frame.pack(anchor="w", fill="x")
+        
+        # Get restaurant image (small)
+        restaurant_id = self.current_order.get('restaurant_id')
+        if restaurant_id:
+            restaurant_image = self.image_handler.get_restaurant_image(restaurant_id, size=(24, 24))
+            if restaurant_image:
+                restaurant_icon = ctk.CTkLabel(restaurant_frame, image=restaurant_image, text="")
+                restaurant_icon.pack(side="left", padx=(0, 5))
+        
         # Restaurant name
         restaurant_name = ctk.CTkLabel(
-            details_frame, 
+            restaurant_frame, 
             text=self.current_order.get('restaurant_name', 'Restaurant'), 
             font=("Arial", 16, "bold"), 
             text_color="#1F2937",
             anchor="w"
         )
-        restaurant_name.pack(anchor="w")
+        restaurant_name.pack(side="left")
         
         # Food name
         food_name = ctk.CTkLabel(
@@ -362,7 +416,7 @@ class OrderTrackingApp:
 
     def create_delivery_location(self):
         """
-        Create delivery location section
+        Create delivery location section with map visualization
         """
         # Delivery Location Heading
         self.delivery_heading = ctk.CTkLabel(
@@ -378,20 +432,29 @@ class OrderTrackingApp:
         self.map_frame = ctk.CTkFrame(self.card_frame, fg_color="#F1F2F3", height=180, corner_radius=10)
         self.map_frame.pack(fill="x", padx=30, pady=5)
         
+        # Create a simple visual map placeholder with a pin
+        map_label = ctk.CTkLabel(
+            self.map_frame,
+            text="📍",  # Map pin emoji
+            font=("Arial", 36),
+            text_color="#EF4444"
+        )
+        map_label.place(relx=0.5, rely=0.4, anchor="center")
+        
         # Address details
-        address_frame = ctk.CTkFrame(self.map_frame, fg_color="transparent")
-        address_frame.place(relx=0.5, rely=0.5, anchor="center")
+        address_frame = ctk.CTkFrame(self.map_frame, fg_color="white", corner_radius=10)
+        address_frame.place(relx=0.5, rely=0.75, anchor="center", width=500, height=60)
         
         # Address text
         address_label = ctk.CTkLabel(
             address_frame, 
             text=self.current_order.get('delivery_address', 'No Address Provided'), 
-            font=("Arial", 16), 
+            font=("Arial", 14), 
             text_color="#1F2937",
-            wraplength=500,
+            wraplength=480,
             justify="center"
         )
-        address_label.pack()
+        address_label.place(relx=0.5, rely=0.5, anchor="center")
 
     def create_bottom_navigation(self):
         """Create bottom navigation bar"""

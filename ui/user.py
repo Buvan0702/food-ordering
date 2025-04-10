@@ -2,8 +2,11 @@ import customtkinter as ctk
 import subprocess
 import sys
 import re
+import os
+from PIL import Image
 from db_connection import DatabaseConnection
 from password_utility import PasswordManager
+from image_handler import ImageHandler
 
 class UserProfileApp:
     def __init__(self, user_id=None):
@@ -19,6 +22,9 @@ class UserProfileApp:
 
         # Store user ID
         self.user_id = user_id
+        
+        # Initialize image handler
+        self.image_handler = ImageHandler()
 
         # Fetch user data
         self.user_data = self.fetch_user_data()
@@ -60,7 +66,7 @@ class UserProfileApp:
         
         try:
             query = """
-            SELECT o.order_id, r.restaurant_name, o.order_date, o.total_amount
+            SELECT o.order_id, r.restaurant_id, r.restaurant_name, o.order_date, o.total_amount
             FROM Orders o
             JOIN Restaurants r ON o.restaurant_id = r.restaurant_id
             WHERE o.user_id = %s AND o.status = 'Delivered'
@@ -86,14 +92,8 @@ class UserProfileApp:
         self.main_frame = ctk.CTkFrame(self.root, fg_color="white", corner_radius=20)
         self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Header
-        self.header_label = ctk.CTkLabel(
-            self.main_frame, 
-            text="User Profile", 
-            font=("Arial", 28, "bold"), 
-            text_color="#1F2937"
-        )
-        self.header_label.pack(pady=(30, 20))
+        # Header with user avatar
+        self.create_header()
 
         # Past Orders Section
         self.past_orders_label = ctk.CTkLabel(
@@ -123,9 +123,54 @@ class UserProfileApp:
 
         # Bottom Navigation
         self.create_bottom_navigation()
+        
+    def create_header(self):
+        """Create header with user avatar"""
+        header_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent", height=100)
+        header_frame.pack(fill="x", padx=50, pady=(20, 10))
+        
+        # User avatar frame (circular)
+        avatar_size = 80
+        avatar_frame = ctk.CTkFrame(
+            header_frame, 
+            width=avatar_size, 
+            height=avatar_size, 
+            corner_radius=avatar_size//2,
+            fg_color="#E5E7EB"
+        )
+        avatar_frame.pack(side="left", padx=(0, 20))
+        
+        # User initial or avatar
+        if self.user_data:
+            initials = (self.user_data.get('first_name', 'U')[0] + self.user_data.get('last_name', '')[0:1]).upper()
+        else:
+            initials = "U"
+            
+        avatar_label = ctk.CTkLabel(
+            avatar_frame,
+            text=initials,
+            font=("Arial", 36, "bold"),
+            text_color="#4B5563"
+        )
+        avatar_label.place(relx=0.5, rely=0.5, anchor="center")
+        
+        # User name and header
+        if self.user_data:
+            full_name = f"{self.user_data.get('first_name', '')} {self.user_data.get('last_name', '')}".strip()
+            header_text = f"{full_name}'s Profile"
+        else:
+            header_text = "User Profile"
+            
+        header_label = ctk.CTkLabel(
+            header_frame, 
+            text=header_text, 
+            font=("Arial", 28, "bold"), 
+            text_color="#1F2937"
+        )
+        header_label.pack(side="left", pady=(20, 0))
 
     def create_past_orders(self):
-        """Create past orders section with cards"""
+        """Create past orders section with cards and images"""
         # Container for order cards
         orders_container = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         orders_container.pack(fill="x", padx=50, pady=5)
@@ -155,6 +200,34 @@ class UserProfileApp:
             )
             order_card.pack(side="left", padx=10, pady=5)
             
+            # Restaurant image (small)
+            img_frame = ctk.CTkFrame(
+                order_card,
+                fg_color="#F3F4F6",
+                width=40,
+                height=40,
+                corner_radius=20
+            )
+            img_frame.place(x=20, y=20)
+            
+            # Try to get restaurant image for the order
+            restaurant_id = order.get('restaurant_id')
+            if restaurant_id:
+                restaurant_image = self.image_handler.get_restaurant_image(restaurant_id, size=(40, 40))
+                if restaurant_image:
+                    img_label = ctk.CTkLabel(img_frame, image=restaurant_image, text="")
+                    img_label.place(relx=0.5, rely=0.5, anchor="center")
+                else:
+                    # Fallback to first letter of restaurant name
+                    rest_initial = order.get('restaurant_name', 'R')[0].upper()
+                    initial_label = ctk.CTkLabel(
+                        img_frame,
+                        text=rest_initial,
+                        font=("Arial", 16, "bold"),
+                        text_color="#6B7280"
+                    )
+                    initial_label.place(relx=0.5, rely=0.5, anchor="center")
+            
             # Restaurant name
             restaurant_label = ctk.CTkLabel(
                 order_card, 
@@ -163,7 +236,7 @@ class UserProfileApp:
                 text_color="#1F2937",
                 anchor="w"
             )
-            restaurant_label.place(x=20, y=20)
+            restaurant_label.place(x=70, y=20)
             
             # Order date
             date_label = ctk.CTkLabel(
@@ -221,11 +294,56 @@ class UserProfileApp:
             for item in order_items:
                 self.add_to_cart(item['menu_item_id'], item['quantity'])
 
-            # Navigate to cart
-            subprocess.Popen([sys.executable, "cart.py", str(self.user_id)])
-            self.root.destroy()
+            # Show confirmation message
+            confirmation = ctk.CTkToplevel(self.root)
+            confirmation.title("Order Added to Cart")
+            confirmation.geometry("300x150")
+            confirmation.resizable(False, False)
+            confirmation.grab_set()
+            
+            # Message
+            msg_label = ctk.CTkLabel(
+                confirmation,
+                text="Items added to your cart!",
+                font=("Arial", 16)
+            )
+            msg_label.pack(pady=(30, 20))
+            
+            # Buttons frame
+            buttons_frame = ctk.CTkFrame(confirmation, fg_color="transparent")
+            buttons_frame.pack(pady=10)
+            
+            # Continue button
+            continue_btn = ctk.CTkButton(
+                buttons_frame,
+                text="Continue Shopping",
+                font=("Arial", 14),
+                fg_color="#6B7280",
+                text_color="white",
+                hover_color="#4B5563",
+                command=lambda: confirmation.destroy()
+            )
+            continue_btn.pack(side="left", padx=5)
+            
+            # Go to cart button
+            cart_btn = ctk.CTkButton(
+                buttons_frame,
+                text="Go to Cart",
+                font=("Arial", 14),
+                fg_color="#22C55E",
+                text_color="white",
+                hover_color="#16A34A",
+                command=lambda: self.go_to_cart_confirm(confirmation)
+            )
+            cart_btn.pack(side="left", padx=5)
+            
         except Exception as e:
             print(f"Error reordering: {e}")
+            
+    def go_to_cart_confirm(self, confirmation_window):
+        """Navigate to cart from the confirmation window"""
+        confirmation_window.destroy()
+        self.go_to_cart()
 
     def add_to_cart(self, menu_item_id, quantity):
         """
@@ -285,36 +403,50 @@ class UserProfileApp:
         
         # User information fields
         fields = [
-            {"label": "Name:", "value": full_name},
-            {"label": "Email:", "value": self.user_data.get('email', 'N/A')},
-            {"label": "Phone:", "value": self.user_data.get('phone_number', 'N/A')},
-            {"label": "Address:", "value": self.user_data.get('address', 'N/A')}
+            {"label": "Name:", "value": full_name, "icon": "👤"},
+            {"label": "Email:", "value": self.user_data.get('email', 'N/A'), "icon": "✉️"},
+            {"label": "Phone:", "value": self.user_data.get('phone_number', 'N/A'), "icon": "📱"},
+            {"label": "Address:", "value": self.user_data.get('address', 'N/A'), "icon": "🏠"}
         ]
 
         # Add each field with proper spacing
         for i, field in enumerate(fields):
+            # Row frame
+            row_frame = ctk.CTkFrame(profile_container, fg_color="transparent")
+            row_frame.grid(row=i, column=0, sticky="ew", padx=20, pady=15)
+            row_frame.grid_columnconfigure(1, weight=1)
+            
+            # Icon
+            icon_label = ctk.CTkLabel(
+                row_frame,
+                text=field["icon"],
+                font=("Arial", 18),
+                text_color="#6B7280"
+            )
+            icon_label.grid(row=0, column=0, padx=(0, 10))
+            
             # Label
             label = ctk.CTkLabel(
-                profile_container, 
+                row_frame, 
                 text=field["label"], 
                 font=("Arial", 14), 
                 text_color="#1F2937",
                 anchor="w"
             )
-            label.grid(row=i, column=0, sticky="w", padx=(20, 10), pady=15)
+            label.grid(row=0, column=1, sticky="w")
             
             # Value (right-aligned)
             value = ctk.CTkLabel(
-                profile_container, 
+                row_frame, 
                 text=field["value"], 
                 font=("Arial", 14), 
                 text_color="#1F2937",
                 anchor="e"
             )
-            value.grid(row=i, column=1, sticky="e", padx=(10, 20), pady=15)
+            value.grid(row=0, column=2, sticky="e", padx=(10, 0))
 
         # Configure grid to make value column expand
-        profile_container.grid_columnconfigure(1, weight=1)
+        profile_container.grid_columnconfigure(0, weight=1)
         
         # Edit Profile Button (green)
         edit_btn = ctk.CTkButton(
@@ -329,7 +461,7 @@ class UserProfileApp:
             height=40,
             command=self.open_edit_profile
         )
-        edit_btn.grid(row=len(fields), column=0, columnspan=2, padx=20, pady=20, sticky="ew")
+        edit_btn.grid(row=len(fields), column=0, padx=20, pady=20, sticky="ew")
 
     def open_edit_profile(self):
         """
@@ -401,12 +533,12 @@ class UserProfileApp:
         try:
             # Validate inputs
             if not first_name or not last_name:
-                ctk.CTkMessagebox.showerror("Validation Error", "First and Last name are required")
+                self.show_error_message("Validation Error", "First and Last name are required")
                 return
 
             # Validate phone number
             if phone and not re.match(r'^\+?1?\d{10,14}$', phone):
-                ctk.CTkMessagebox.showerror("Validation Error", "Invalid phone number")
+                self.show_error_message("Validation Error", "Invalid phone number")
                 return
 
             # Update user profile in database
@@ -429,20 +561,113 @@ class UserProfileApp:
             # Close edit window
             window.destroy()
 
-            # Recreate profile info section
+            # Recreate the UI with updated data
             for widget in self.main_frame.winfo_children():
-                if isinstance(widget, ctk.CTkFrame) and widget != self.main_frame:
-                    widget.destroy()
-
+                widget.destroy()
+                
+            # Recreate all UI components
+            self.create_header()
+            
+            self.past_orders_label = ctk.CTkLabel(
+                self.main_frame, 
+                text="Past Orders", 
+                font=("Arial", 20, "bold"), 
+                text_color="#1F2937",
+                anchor="w"
+            )
+            self.past_orders_label.pack(anchor="w", padx=50, pady=(20, 10))
+            
             self.create_past_orders()
+            
+            self.profile_settings_label = ctk.CTkLabel(
+                self.main_frame, 
+                text="Profile & Settings", 
+                font=("Arial", 20, "bold"), 
+                text_color="#1F2937",
+                anchor="w"
+            )
+            self.profile_settings_label.pack(anchor="w", padx=50, pady=(30, 10))
+            
             self.create_profile_info()
+            self.create_bottom_navigation()
 
             # Show success message
-            ctk.CTkMessagebox.showinfo("Success", "Profile updated successfully")
+            self.show_success_message("Success", "Profile updated successfully")
 
         except Exception as e:
             print(f"Error saving profile changes: {e}")
-            ctk.CTkMessagebox.showerror("Error", "Failed to update profile")
+            self.show_error_message("Error", "Failed to update profile")
+            
+    def show_error_message(self, title, message):
+        """Show error message dialog"""
+        error_window = ctk.CTkToplevel(self.root)
+        error_window.title(title)
+        error_window.geometry("400x150")
+        error_window.resizable(False, False)
+        error_window.grab_set()
+        
+        # Error icon
+        icon_label = ctk.CTkLabel(
+            error_window,
+            text="❌",
+            font=("Arial", 36),
+            text_color="#EF4444"
+        )
+        icon_label.pack(pady=(10, 0))
+        
+        # Message
+        msg_label = ctk.CTkLabel(
+            error_window,
+            text=message,
+            font=("Arial", 14),
+            wraplength=350
+        )
+        msg_label.pack(pady=10)
+        
+        # OK button
+        ok_btn = ctk.CTkButton(
+            error_window,
+            text="OK",
+            font=("Arial", 14),
+            command=error_window.destroy
+        )
+        ok_btn.pack(pady=10)
+        
+    def show_success_message(self, title, message):
+        """Show success message dialog"""
+        success_window = ctk.CTkToplevel(self.root)
+        success_window.title(title)
+        success_window.geometry("400x150")
+        success_window.resizable(False, False)
+        success_window.grab_set()
+        
+        # Success icon
+        icon_label = ctk.CTkLabel(
+            success_window,
+            text="✅",
+            font=("Arial", 36),
+            text_color="#22C55E"
+        )
+        icon_label.pack(pady=(10, 0))
+        
+        # Message
+        msg_label = ctk.CTkLabel(
+            success_window,
+            text=message,
+            font=("Arial", 14)
+        )
+        msg_label.pack(pady=10)
+        
+        # OK button
+        ok_btn = ctk.CTkButton(
+            success_window,
+            text="OK",
+            font=("Arial", 14),
+            fg_color="#22C55E",
+            hover_color="#16A34A",
+            command=success_window.destroy
+        )
+        ok_btn.pack(pady=10)
 
     def create_bottom_navigation(self):
         """Create bottom navigation bar"""

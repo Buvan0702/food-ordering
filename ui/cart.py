@@ -1,7 +1,10 @@
 import customtkinter as ctk
 import subprocess
 import sys
+import os
+from PIL import Image
 from db_connection import DatabaseConnection
+from image_handler import ImageHandler
 
 class ShoppingCartApp:
     def __init__(self, user_id=None):
@@ -20,6 +23,9 @@ class ShoppingCartApp:
 
         # Cart items list
         self.cart_items = []
+        
+        # Initialize image handler
+        self.image_handler = ImageHandler()
 
         # Main white frame with rounded corners
         self.setup_ui()
@@ -33,7 +39,7 @@ class ShoppingCartApp:
 
         try:
             query = """
-            SELECT ci.cart_item_id, mi.menu_item_id, mi.item_name, mi.price, ci.quantity, r.restaurant_name
+            SELECT ci.cart_item_id, mi.menu_item_id, mi.item_name, mi.price, ci.quantity, r.restaurant_name, r.restaurant_id
             FROM CartItems ci
             JOIN MenuItems mi ON ci.menu_item_id = mi.menu_item_id
             JOIN Restaurants r ON mi.restaurant_id = r.restaurant_id
@@ -126,7 +132,7 @@ class ShoppingCartApp:
         self.create_bottom_navigation()
 
     def create_cart_items(self):
-        """Create cart item rows"""
+        """Create cart item rows with images"""
         # Clear existing widgets
         for widget in self.cart_items_frame.winfo_children():
             widget.destroy()
@@ -170,13 +176,27 @@ class ShoppingCartApp:
             )
             img_placeholder.place(x=0, y=5)
             
-            food_label = ctk.CTkLabel(
-                img_placeholder, 
-                text=item.get('restaurant_name', 'Food Item'), 
-                text_color="#9CA3AF", 
-                font=("Arial", 9)
-            )
-            food_label.place(relx=0.5, rely=0.5, anchor="center")
+            # Get food item image
+            menu_item_id = item.get('menu_item_id')
+            food_image = self.image_handler.get_menu_item_image(menu_item_id, size=(70, 70))
+            
+            if food_image:
+                # Show actual food image
+                img_label = ctk.CTkLabel(
+                    img_placeholder,
+                    image=food_image,
+                    text=""
+                )
+                img_label.place(relx=0.5, rely=0.5, anchor="center")
+            else:
+                # Fallback to text
+                food_label = ctk.CTkLabel(
+                    img_placeholder, 
+                    text=item.get('item_name', 'Food Item')[:10], 
+                    text_color="#9CA3AF", 
+                    font=("Arial", 9)
+                )
+                food_label.place(relx=0.5, rely=0.5, anchor="center")
 
             # Item name and price
             name_label = ctk.CTkLabel(
@@ -196,6 +216,16 @@ class ShoppingCartApp:
                 anchor="w"
             )
             price_label.place(x=90, y=45)
+            
+            # Restaurant name (small)
+            restaurant_label = ctk.CTkLabel(
+                item_frame,
+                text=f"From: {item.get('restaurant_name', 'Restaurant')}",
+                font=("Arial", 10),
+                text_color="#9CA3AF",
+                anchor="w"
+            )
+            restaurant_label.place(x=200, y=47)
             
             # Quantity buttons
             # Minus button
@@ -270,6 +300,17 @@ class ShoppingCartApp:
                 params=(change, cart_item.get('cart_item_id'))
             )
 
+            # Delete item if quantity reaches 0
+            if cart_item.get('quantity', 0) + change <= 0:
+                delete_query = """
+                DELETE FROM CartItems 
+                WHERE cart_item_id = %s
+                """
+                DatabaseConnection.execute_query(
+                    delete_query, 
+                    params=(cart_item.get('cart_item_id'),)
+                )
+
             # Refresh cart items
             self.cart_items = self.fetch_cart_items()
             self.create_cart_items()
@@ -285,6 +326,14 @@ class ShoppingCartApp:
         """
         Navigate to payment page
         """
+        if not self.cart_items:
+            # Show warning if cart is empty
+            ctk.CTkMessagebox.showwarning(
+                "Empty Cart",
+                "Your cart is empty. Please add items before proceeding to payment."
+            )
+            return
+            
         try:
             subprocess.Popen([sys.executable, "payment.py", str(self.user_id)])
             self.root.destroy()

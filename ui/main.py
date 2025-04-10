@@ -4,6 +4,9 @@ from mysql.connector import Error
 import subprocess
 import sys
 import hashlib
+import os
+from PIL import Image
+from image_handler import ImageHandler
 
 class FoodDeliveryDatabaseSetup:
     def __init__(self):
@@ -347,8 +350,30 @@ class FoodDeliveryApp:
         self.root.geometry("1200x800")
         self.root.resizable(False, False)
 
+        # Initialize image handler
+        self.image_handler = ImageHandler()
+        
+        # Ensure image directories exist
+        self.ensure_image_directories()
+
         # Setup main UI
         self.setup_ui()
+
+    def ensure_image_directories(self):
+        """
+        Ensure that image directories exist
+        """
+        image_dirs = [
+            "images",
+            "images/restaurants",
+            "images/menu_items",
+            "images/categories"
+        ]
+        
+        for directory in image_dirs:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+                print(f"Created directory: {directory}")
 
     def setup_ui(self):
         """
@@ -358,6 +383,30 @@ class FoodDeliveryApp:
         main_frame = ctk.CTkFrame(self.root, fg_color="#FF8866", corner_radius=20)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # App logo/image at the top
+        try:
+            # Try to load a logo if it exists
+            logo_image = ctk.CTkImage(
+                light_image=Image.open("images/app_logo.png"),
+                dark_image=Image.open("images/app_logo.png"),
+                size=(100, 100)
+            )
+            logo_label = ctk.CTkLabel(
+                main_frame,
+                image=logo_image,
+                text=""
+            )
+            logo_label.pack(pady=(50, 0))
+        except:
+            # If logo doesn't exist, just use an emoji
+            logo_label = ctk.CTkLabel(
+                main_frame,
+                text="🍔",
+                font=("Arial", 72),
+                text_color="white"
+            )
+            logo_label.pack(pady=(50, 0))
+
         # App title
         title_label = ctk.CTkLabel(
             main_frame, 
@@ -365,12 +414,12 @@ class FoodDeliveryApp:
             font=("Arial", 36, "bold"), 
             text_color="white"
         )
-        title_label.pack(pady=(100, 50))
+        title_label.pack(pady=(20, 50))
 
         # Buttons frame
         buttons_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         buttons_frame.pack(expand=True)
-        # Setup Database Button
+        
         # Run database setup automatically
         try:
             db_setup = FoodDeliveryDatabaseSetup()
@@ -381,7 +430,6 @@ class FoodDeliveryApp:
                 print("Failed to setup database. Check console for details.")
         except Exception as e:
             print(f"Database setup error: {e}")
-        # setup_db_btn.pack(pady=10)
 
         # Login Button
         login_btn = ctk.CTkButton(
@@ -410,6 +458,22 @@ class FoodDeliveryApp:
             command=self.open_signup
         )
         signup_btn.pack(pady=10)
+        
+        # Continue as Guest Button
+        guest_btn = ctk.CTkButton(
+            buttons_frame, 
+            text="Continue as Guest", 
+            font=("Arial", 16),
+            fg_color="transparent", 
+            text_color="#FFFFFF",
+            hover_color="rgba(255, 255, 255, 0.2)",
+            border_width=2,
+            border_color="#FFFFFF",
+            width=300, 
+            height=40,
+            command=self.continue_as_guest
+        )
+        guest_btn.pack(pady=(20, 10))
 
     def setup_database(self):
         """
@@ -420,69 +484,167 @@ class FoodDeliveryApp:
             db_setup = FoodDeliveryDatabaseSetup()
             
             # Show confirmation dialog
-            confirm = ctk.CTkMessagebox(
-                title="Confirm Database Setup", 
-                message="This will create/reset the entire database. Are you sure?",
-                icon="warning", 
-                option_1="Yes", 
-                option_2="No"
-            )
+            confirmation = ctk.CTkToplevel(self.root)
+            confirmation.title("Confirm Database Setup")
+            confirmation.geometry("400x200")
+            confirmation.resizable(False, False)
+            confirmation.grab_set()
             
-            # Check user response
-            if confirm.get() == "Yes":
-                # Show progress dialog
-                progress_dialog = ctk.CTkToplevel(self.root)
-                progress_dialog.title("Database Setup")
-                progress_dialog.geometry("300x150")
-                progress_dialog.grab_set()
-
-                # Progress label
-                progress_label = ctk.CTkLabel(
-                    progress_dialog, 
-                    text="Setting up database...", 
-                    font=("Arial", 16)
-                )
-                progress_label.pack(pady=20)
-
-                # Progress bar
-                progress_bar = ctk.CTkProgressBar(progress_dialog)
-                progress_bar.pack(pady=10)
-                progress_bar.set(0)
-                progress_bar.start()
-
-                # Attempt database setup
-                try:
-                    # Call setup method
-                    success = db_setup.setup_complete_database()
-
-                    # Stop progress
-                    progress_bar.stop()
-                    progress_dialog.destroy()
-
-                    # Show result
-                    if success:
-                        ctk.CTkMessagebox.showinfo(
-                            "Success", 
-                            "Database setup completed successfully!"
-                        )
-                    else:
-                        ctk.CTkMessagebox.showerror(
-                            "Error", 
-                            "Failed to setup database. Check console for details."
-                        )
-
-                except Exception as e:
-                    # Stop progress
-                    progress_bar.stop()
-                    progress_dialog.destroy()
-
-                    # Show error
-                    ctk.CTkMessagebox.showerror(
-                        "Database Error", 
-                        f"An error occurred: {str(e)}"
-                    )
+            # Warning message
+            warning_label = ctk.CTkLabel(
+                confirmation,
+                text="This will create/reset the entire database. Are you sure?",
+                font=("Arial", 14),
+                wraplength=350
+            )
+            warning_label.pack(pady=(30, 20))
+            
+            # Buttons frame
+            buttons_frame = ctk.CTkFrame(confirmation, fg_color="transparent")
+            buttons_frame.pack(pady=10)
+            
+            # No button
+            no_btn = ctk.CTkButton(
+                buttons_frame,
+                text="No",
+                font=("Arial", 14),
+                fg_color="#6B7280",
+                hover_color="#4B5563",
+                width=150,
+                command=confirmation.destroy
+            )
+            no_btn.pack(side="left", padx=10)
+            
+            # Yes button
+            yes_btn = ctk.CTkButton(
+                buttons_frame,
+                text="Yes",
+                font=("Arial", 14),
+                fg_color="#EF4444",
+                hover_color="#DC2626",
+                width=150,
+                command=lambda: self.run_database_setup(confirmation, db_setup)
+            )
+            yes_btn.pack(side="left", padx=10)
+            
         except Exception as e:
-            ctk.CTkMessagebox.showerror("Error", str(e))
+            self.show_error("Error", str(e))
+            
+    def run_database_setup(self, confirmation, db_setup):
+        """Run the database setup process"""
+        confirmation.destroy()
+        
+        # Show progress dialog
+        progress_dialog = ctk.CTkToplevel(self.root)
+        progress_dialog.title("Database Setup")
+        progress_dialog.geometry("300x150")
+        progress_dialog.grab_set()
+
+        # Progress label
+        progress_label = ctk.CTkLabel(
+            progress_dialog, 
+            text="Setting up database...", 
+            font=("Arial", 16)
+        )
+        progress_label.pack(pady=20)
+
+        # Progress bar
+        progress_bar = ctk.CTkProgressBar(progress_dialog)
+        progress_bar.pack(pady=10)
+        progress_bar.set(0)
+        progress_bar.start()
+
+        # Attempt database setup
+        try:
+            # Call setup method
+            success = db_setup.setup_complete_database()
+
+            # Stop progress
+            progress_bar.stop()
+            progress_dialog.destroy()
+
+            # Show result
+            if success:
+                self.show_success("Success", "Database setup completed successfully!")
+            else:
+                self.show_error("Error", "Failed to setup database. Check console for details.")
+
+        except Exception as e:
+            # Stop progress
+            progress_bar.stop()
+            progress_dialog.destroy()
+
+            # Show error
+            self.show_error("Database Error", f"An error occurred: {str(e)}")
+            
+    def show_error(self, title, message):
+        """Show error message dialog"""
+        error = ctk.CTkToplevel(self.root)
+        error.title(title)
+        error.geometry("400x200")
+        error.resizable(False, False)
+        error.grab_set()
+        
+        # Error icon
+        icon_label = ctk.CTkLabel(
+            error,
+            text="❌",
+            font=("Arial", 48),
+            text_color="#EF4444"
+        )
+        icon_label.pack(pady=(20, 10))
+        
+        # Error message
+        msg_label = ctk.CTkLabel(
+            error,
+            text=message,
+            font=("Arial", 14),
+            wraplength=350
+        )
+        msg_label.pack(pady=10)
+        
+        # OK button
+        ok_btn = ctk.CTkButton(
+            error,
+            text="OK",
+            command=error.destroy
+        )
+        ok_btn.pack(pady=10)
+        
+    def show_success(self, title, message):
+        """Show success message dialog"""
+        success = ctk.CTkToplevel(self.root)
+        success.title(title)
+        success.geometry("400x200")
+        success.resizable(False, False)
+        success.grab_set()
+        
+        # Success icon
+        icon_label = ctk.CTkLabel(
+            success,
+            text="✅",
+            font=("Arial", 48),
+            text_color="#22C55E"
+        )
+        icon_label.pack(pady=(20, 10))
+        
+        # Success message
+        msg_label = ctk.CTkLabel(
+            success,
+            text=message,
+            font=("Arial", 14)
+        )
+        msg_label.pack(pady=10)
+        
+        # OK button
+        ok_btn = ctk.CTkButton(
+            success,
+            text="OK",
+            fg_color="#22C55E",
+            hover_color="#16A34A",
+            command=success.destroy
+        )
+        ok_btn.pack(pady=10)
 
     def open_login(self):
         """
@@ -492,7 +654,7 @@ class FoodDeliveryApp:
             subprocess.Popen([sys.executable, "login.py"])
             self.root.destroy()
         except Exception as e:
-            ctk.CTkMessagebox.showerror("Error", f"Unable to open login page: {e}")
+            self.show_error("Error", f"Unable to open login page: {e}")
 
     def open_signup(self):
         """
@@ -502,7 +664,17 @@ class FoodDeliveryApp:
             subprocess.Popen([sys.executable, "signup.py"])
             self.root.destroy()
         except Exception as e:
-            ctk.CTkMessagebox.showerror("Error", f"Unable to open signup page: {e}")
+            self.show_error("Error", f"Unable to open signup page: {e}")
+            
+    def continue_as_guest(self):
+        """
+        Continue as guest (no login required)
+        """
+        try:
+            subprocess.Popen([sys.executable, "home.py"])  # No user_id passed
+            self.root.destroy()
+        except Exception as e:
+            self.show_error("Error", f"Unable to continue as guest: {e}")
 
     def run(self):
         """

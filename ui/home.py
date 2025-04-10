@@ -3,10 +3,13 @@ import subprocess
 import sys
 import re
 from typing import List, Dict
+import os
+from PIL import Image
 
 # Database and utility imports
 from db_connection import DatabaseConnection
 from password_utility import PasswordManager
+from image_handler import ImageHandler
 
 class HomePage:
     def __init__(self, user_id=None):
@@ -23,6 +26,9 @@ class HomePage:
         # Store user ID and user details
         self.user_id = user_id
         self.user_details = self.fetch_user_details()
+        
+        # Initialize image handler
+        self.image_handler = ImageHandler()
 
         # Setup main components
         self.setup_ui()
@@ -151,6 +157,10 @@ class HomePage:
             ]
 
             for i, category in enumerate(categories):
+                # Get category image
+                category_id = category['category_id']
+                category_image = self.image_handler.get_category_image(category_id, size=(24, 24))
+                
                 color = category_colors[i % len(category_colors)]
                 category_btn = ctk.CTkButton(
                     self.category_frame,
@@ -162,6 +172,8 @@ class HomePage:
                     width=120,
                     height=35,
                     corner_radius=20,
+                    image=category_image,  # Add category icon
+                    compound="left",  # Show icon to the left of text
                     command=lambda cat_id=category['category_id']: self.filter_restaurants(cat_id)
                 )
                 category_btn.pack(side="left", padx=5)
@@ -235,7 +247,7 @@ class HomePage:
 
     def create_restaurant_card(self, restaurant):
         """
-        Create a single restaurant card
+        Create a single restaurant card with image
         """
         # Card frame
         card = ctk.CTkFrame(
@@ -250,7 +262,7 @@ class HomePage:
         card.pack(side="left", padx=10, pady=10)
         card.pack_propagate(False)
         
-        # Image placeholder (in real app, would use actual restaurant image)
+        # Image frame
         img_frame = ctk.CTkFrame(
             card,
             width=320,
@@ -260,13 +272,27 @@ class HomePage:
         )
         img_frame.pack(padx=15, pady=15)
         
-        img_label = ctk.CTkLabel(
-            img_frame,
-            text=restaurant.get('restaurant_name', 'Restaurant'),
-            font=("Arial", 20, "bold"),
-            text_color="#A0A0A0"
-        )
-        img_label.place(relx=0.5, rely=0.5, anchor="center")
+        # Get restaurant image
+        restaurant_id = restaurant.get('restaurant_id')
+        restaurant_image = self.image_handler.get_restaurant_image(restaurant_id, size=(320, 170))
+        
+        if restaurant_image:
+            # Show actual image
+            img_label = ctk.CTkLabel(
+                img_frame,
+                image=restaurant_image,
+                text=""
+            )
+            img_label.place(relx=0.5, rely=0.5, anchor="center")
+        else:
+            # Fallback to text
+            img_label = ctk.CTkLabel(
+                img_frame,
+                text=restaurant.get('restaurant_name', 'Restaurant'),
+                font=("Arial", 20, "bold"),
+                text_color="#A0A0A0"
+            )
+            img_label.place(relx=0.5, rely=0.5, anchor="center")
         
         # Restaurant name
         name_label = ctk.CTkLabel(
@@ -333,10 +359,12 @@ class HomePage:
         Open restaurant menu
         """
         try:
-            # Pass restaurant ID to menu page
+            # Pass restaurant ID and user ID to menu page
             restaurant_id = restaurant.get('restaurant_id')
             if restaurant_id:
-                subprocess.Popen([sys.executable, "menu.py", str(restaurant_id)])
+                # Use the new restaurant_menu.py instead of menu.py
+                subprocess.Popen([sys.executable, "restaurant_menu.py", str(restaurant_id), str(self.user_id)])
+                self.root.destroy()
             else:
                 print("No restaurant ID found")
         except Exception as e:
@@ -404,6 +432,7 @@ class HomePage:
         """Open orders page"""
         try:
             subprocess.Popen([sys.executable, "track.py", str(self.user_id)])
+            self.root.destroy()
         except Exception as e:
             print(f"Error opening orders: {e}")
 
@@ -411,6 +440,7 @@ class HomePage:
         """Open cart page"""
         try:
             subprocess.Popen([sys.executable, "cart.py", str(self.user_id)])
+            self.root.destroy()
         except Exception as e:
             print(f"Error opening cart: {e}")
 
@@ -418,6 +448,7 @@ class HomePage:
         """Open profile page"""
         try:
             subprocess.Popen([sys.executable, "profile.py", str(self.user_id)])
+            self.root.destroy()
         except Exception as e:
             print(f"Error opening profile: {e}")
 
@@ -425,9 +456,26 @@ class HomePage:
         """Open settings page"""
         try:
             subprocess.Popen([sys.executable, "settings.py", str(self.user_id)])
+            self.root.destroy()
         except Exception as e:
             print(f"Error opening settings: {e}")
 
     def run(self):
         """Run the home page application"""
-        self.root
+        self.root.mainloop()
+
+def main():
+    # Check if user ID is passed as command-line argument
+    user_id = None
+    if len(sys.argv) > 1:
+        try:
+            user_id = int(sys.argv[1])
+        except ValueError:
+            print("Invalid user ID")
+
+    # Create and run home page
+    app = HomePage(user_id)
+    app.run()
+
+if __name__ == "__main__":
+    main()
