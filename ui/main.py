@@ -141,7 +141,7 @@ class FoodDeliveryDatabaseSetup:
         )
         """)
 
-        # Orders Table
+        # Orders Table - Fixed to allow NULL for estimated_delivery_time
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS Orders (
             order_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -150,7 +150,7 @@ class FoodDeliveryDatabaseSetup:
             total_amount DECIMAL(10, 2) NOT NULL,
             order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status ENUM('Placed', 'Preparing', 'Out for Delivery', 'Delivered') DEFAULT 'Placed',
-            estimated_delivery_time TIMESTAMP,
+            estimated_delivery_time TIMESTAMP NULL,
             delivery_address TEXT,
             special_instructions TEXT,
             FOREIGN KEY (user_id) REFERENCES Users(user_id),
@@ -210,10 +210,15 @@ class FoodDeliveryDatabaseSetup:
             ('Burger', 'Gourmet burger options')
         ]
         
-        cursor.executemany(
-            "INSERT IGNORE INTO Categories (category_name, description) VALUES (%s, %s)", 
-            categories
-        )
+        for category in categories:
+            try:
+                cursor.execute(
+                    "INSERT INTO Categories (category_name, description) VALUES (%s, %s)", 
+                    category
+                )
+                print(f"Added category: {category[0]}")
+            except mysql.connector.IntegrityError:
+                print(f"Category {category[0]} already exists")
 
     def insert_sample_restaurants(self, cursor):
         """
@@ -229,12 +234,17 @@ class FoodDeliveryDatabaseSetup:
             ('Green Leaf Cafe', 'Healthy organic meals', 5, 4.4, 30, '987 Health Ave', '555-2345')
         ]
         
-        cursor.executemany(
-            """INSERT IGNORE INTO Restaurants 
-            (restaurant_name, description, category_id, rating, delivery_time, address, contact_number) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s)""", 
-            restaurants
-        )
+        for restaurant in restaurants:
+            try:
+                cursor.execute(
+                    """INSERT INTO Restaurants 
+                    (restaurant_name, description, category_id, rating, delivery_time, address, contact_number) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)""", 
+                    restaurant
+                )
+                print(f"Added restaurant: {restaurant[0]}")
+            except mysql.connector.IntegrityError:
+                print(f"Restaurant {restaurant[0]} already exists")
 
     def insert_sample_menu_items(self, cursor):
         """
@@ -273,12 +283,17 @@ class FoodDeliveryDatabaseSetup:
             (6, 'Smoothie Bowl', 'Nutritious fruit bowl', 9.99, 'Breakfast', True)
         ]
         
-        cursor.executemany(
-            """INSERT IGNORE INTO MenuItems 
-            (restaurant_id, item_name, description, price, category, is_vegetarian) 
-            VALUES (%s, %s, %s, %s, %s, %s)""", 
-            menu_items
-        )
+        for item in menu_items:
+            try:
+                cursor.execute(
+                    """INSERT INTO MenuItems 
+                    (restaurant_id, item_name, description, price, category, is_vegetarian) 
+                    VALUES (%s, %s, %s, %s, %s, %s)""", 
+                    item
+                )
+                print(f"Added menu item: {item[1]}")
+            except mysql.connector.IntegrityError:
+                print(f"Menu item {item[1]} already exists")
 
     def insert_sample_users(self, cursor):
         """
@@ -294,17 +309,23 @@ class FoodDeliveryDatabaseSetup:
              self.hash_password('hello123'), '5555555555', '789 Oak Rd, Elsewhere, USA')
         ]
         
-        cursor.executemany(
-            """INSERT IGNORE INTO Users 
-            (first_name, last_name, email, password, phone_number, address) 
-            VALUES (%s, %s, %s, %s, %s, %s)""", 
-            users
-        )
+        for user in users:
+            try:
+                cursor.execute(
+                    """INSERT INTO Users 
+                    (first_name, last_name, email, password, phone_number, address) 
+                    VALUES (%s, %s, %s, %s, %s, %s)""", 
+                    user
+                )
+                print(f"Added user: {user[0]} {user[1]}")
+            except mysql.connector.IntegrityError:
+                print(f"User with email {user[2]} already exists")
 
     def insert_sample_orders(self, cursor):
         """
-        Insert sample orders
+        Insert sample orders with updated handling of estimated_delivery_time
         """
+        # First, insert the orders without specifying estimated_delivery_time
         orders = [
             # user_id, restaurant_id, total_amount, status, delivery_address
             (1, 1, 27.98, 'Delivered', '123 Main St, Anytown, USA'),
@@ -312,31 +333,48 @@ class FoodDeliveryDatabaseSetup:
             (3, 5, 18.98, 'Preparing', '789 Oak Rd, Elsewhere, USA')
         ]
         
-        cursor.executemany(
-            """INSERT IGNORE INTO Orders 
-            (user_id, restaurant_id, total_amount, status, delivery_address, estimated_delivery_time) 
-            VALUES (%s, %s, %s, %s, %s, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 45 MINUTE))""", 
-            orders
+        # Insert orders
+        order_ids = []
+        for order in orders:
+            try:
+                cursor.execute(
+                    """INSERT INTO Orders 
+                    (user_id, restaurant_id, total_amount, status, delivery_address) 
+                    VALUES (%s, %s, %s, %s, %s)""", 
+                    order
+                )
+                order_ids.append(cursor.lastrowid)
+                print(f"Added order for user {order[0]}, restaurant {order[1]}")
+            except mysql.connector.IntegrityError as e:
+                print(f"Error adding order: {e}")
+        
+        # Update the estimated delivery times
+        cursor.execute(
+            """UPDATE Orders 
+            SET estimated_delivery_time = DATE_ADD(order_date, INTERVAL 45 MINUTE)
+            WHERE estimated_delivery_time IS NULL"""
         )
-
-        # Get the last inserted order IDs
-        cursor.execute("SELECT LAST_INSERT_ID()")
-        last_order_id = cursor.fetchone()[0]
-
-        # Insert order items
+        
+        # Insert order items for the orders we just created
         order_items = [
             # order_id, menu_item_id, quantity, item_price
-            (last_order_id - 2, 1, 2, 12.99),  # First order: 2 Margherita Pizzas
-            (last_order_id - 1, 7, 1, 15.99),  # Second order: 1 Chicken Tikka Masala
-            (last_order_id, 13, 2, 8.99)       # Third order: 2 Chocolate Cakes
+            (order_ids[0], 1, 2, 12.99),  # First order: 2 Margherita Pizzas
+            (order_ids[1], 7, 1, 15.99),  # Second order: 1 Chicken Tikka Masala
+            (order_ids[2], 13, 2, 8.99)   # Third order: 2 Chocolate Cakes
         ]
         
-        cursor.executemany(
-            """INSERT IGNORE INTO OrderItems 
-            (order_id, menu_item_id, quantity, item_price) 
-            VALUES (%s, %s, %s, %s)""", 
-            order_items
-        )
+        for item in order_items:
+            try:
+                cursor.execute(
+                    """INSERT INTO OrderItems 
+                    (order_id, menu_item_id, quantity, item_price) 
+                    VALUES (%s, %s, %s, %s)""", 
+                    item
+                )
+                print(f"Added order item for order {item[0]}, menu item {item[1]}")
+            except mysql.connector.IntegrityError as e:
+                print(f"Error adding order item: {e}")
+
 
 class FoodDeliveryApp:
     def __init__(self):
@@ -355,6 +393,9 @@ class FoodDeliveryApp:
         
         # Ensure image directories exist
         self.ensure_image_directories()
+        
+        # Automatically setup database on startup
+        self.auto_setup_database()
 
         # Setup main UI
         self.setup_ui()
@@ -374,6 +415,26 @@ class FoodDeliveryApp:
             if not os.path.exists(directory):
                 os.makedirs(directory)
                 print(f"Created directory: {directory}")
+                
+    def auto_setup_database(self):
+        """
+        Automatically setup database on startup
+        """
+        print("Initializing database...")
+        try:
+            # Create database setup instance
+            db_setup = FoodDeliveryDatabaseSetup()
+            
+            # Attempt database setup
+            success = db_setup.setup_complete_database()
+            
+            if success:
+                print("Database setup completed successfully!")
+            else:
+                print("Failed to setup database. Check console for details.")
+                
+        except Exception as e:
+            print(f"Database setup error: {e}")
 
     def setup_ui(self):
         """
@@ -419,17 +480,6 @@ class FoodDeliveryApp:
         # Buttons frame
         buttons_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         buttons_frame.pack(expand=True)
-        
-        # Run database setup automatically
-        try:
-            db_setup = FoodDeliveryDatabaseSetup()
-            success = db_setup.setup_complete_database()
-            if success:
-                print("Database setup completed successfully!")
-            else:
-                print("Failed to setup database. Check console for details.")
-        except Exception as e:
-            print(f"Database setup error: {e}")
 
         # Login Button
         login_btn = ctk.CTkButton(
@@ -475,108 +525,6 @@ class FoodDeliveryApp:
         )
         guest_btn.pack(pady=(20, 10))
 
-    def setup_database(self):
-        """
-        Setup the database with all tables and sample data
-        """
-        try:
-            # Create database setup instance
-            db_setup = FoodDeliveryDatabaseSetup()
-            
-            # Show confirmation dialog
-            confirmation = ctk.CTkToplevel(self.root)
-            confirmation.title("Confirm Database Setup")
-            confirmation.geometry("400x200")
-            confirmation.resizable(False, False)
-            confirmation.grab_set()
-            
-            # Warning message
-            warning_label = ctk.CTkLabel(
-                confirmation,
-                text="This will create/reset the entire database. Are you sure?",
-                font=("Arial", 14),
-                wraplength=350
-            )
-            warning_label.pack(pady=(30, 20))
-            
-            # Buttons frame
-            buttons_frame = ctk.CTkFrame(confirmation, fg_color="transparent")
-            buttons_frame.pack(pady=10)
-            
-            # No button
-            no_btn = ctk.CTkButton(
-                buttons_frame,
-                text="No",
-                font=("Arial", 14),
-                fg_color="#6B7280",
-                hover_color="#4B5563",
-                width=150,
-                command=confirmation.destroy
-            )
-            no_btn.pack(side="left", padx=10)
-            
-            # Yes button
-            yes_btn = ctk.CTkButton(
-                buttons_frame,
-                text="Yes",
-                font=("Arial", 14),
-                fg_color="#EF4444",
-                hover_color="#DC2626",
-                width=150,
-                command=lambda: self.run_database_setup(confirmation, db_setup)
-            )
-            yes_btn.pack(side="left", padx=10)
-            
-        except Exception as e:
-            self.show_error("Error", str(e))
-            
-    def run_database_setup(self, confirmation, db_setup):
-        """Run the database setup process"""
-        confirmation.destroy()
-        
-        # Show progress dialog
-        progress_dialog = ctk.CTkToplevel(self.root)
-        progress_dialog.title("Database Setup")
-        progress_dialog.geometry("300x150")
-        progress_dialog.grab_set()
-
-        # Progress label
-        progress_label = ctk.CTkLabel(
-            progress_dialog, 
-            text="Setting up database...", 
-            font=("Arial", 16)
-        )
-        progress_label.pack(pady=20)
-
-        # Progress bar
-        progress_bar = ctk.CTkProgressBar(progress_dialog)
-        progress_bar.pack(pady=10)
-        progress_bar.set(0)
-        progress_bar.start()
-
-        # Attempt database setup
-        try:
-            # Call setup method
-            success = db_setup.setup_complete_database()
-
-            # Stop progress
-            progress_bar.stop()
-            progress_dialog.destroy()
-
-            # Show result
-            if success:
-                self.show_success("Success", "Database setup completed successfully!")
-            else:
-                self.show_error("Error", "Failed to setup database. Check console for details.")
-
-        except Exception as e:
-            # Stop progress
-            progress_bar.stop()
-            progress_dialog.destroy()
-
-            # Show error
-            self.show_error("Database Error", f"An error occurred: {str(e)}")
-            
     def show_error(self, title, message):
         """Show error message dialog"""
         error = ctk.CTkToplevel(self.root)
@@ -608,41 +556,6 @@ class FoodDeliveryApp:
             error,
             text="OK",
             command=error.destroy
-        )
-        ok_btn.pack(pady=10)
-        
-    def show_success(self, title, message):
-        """Show success message dialog"""
-        success = ctk.CTkToplevel(self.root)
-        success.title(title)
-        success.geometry("400x200")
-        success.resizable(False, False)
-        success.grab_set()
-        
-        # Success icon
-        icon_label = ctk.CTkLabel(
-            success,
-            text="✅",
-            font=("Arial", 48),
-            text_color="#22C55E"
-        )
-        icon_label.pack(pady=(20, 10))
-        
-        # Success message
-        msg_label = ctk.CTkLabel(
-            success,
-            text=message,
-            font=("Arial", 14)
-        )
-        msg_label.pack(pady=10)
-        
-        # OK button
-        ok_btn = ctk.CTkButton(
-            success,
-            text="OK",
-            fg_color="#22C55E",
-            hover_color="#16A34A",
-            command=success.destroy
         )
         ok_btn.pack(pady=10)
 
